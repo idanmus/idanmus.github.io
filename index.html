@@ -13,6 +13,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <style>
 :root{
@@ -21,15 +22,24 @@
   --accent: #4caf50; --telegram: #0088cc; --danger: #f44336;
 }
 body{ margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:var(--bg-dark); color:var(--text); direction:rtl; overflow-x: hidden; }
-header{ background:var(--bg-mid); padding:14px 16px; display:flex; justify-content:center; align-items:center; position:sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
 
-/* כותרת כפתור בית */
-header h1{ margin:0; font-size:20px; cursor: pointer; user-select: none; }
+header{ 
+  background:var(--bg-mid); 
+  padding:14px 16px; 
+  display:flex; 
+  justify-content:center; 
+  align-items:center; 
+  position:sticky; 
+  top:0; 
+  z-index:100; 
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5); 
+}
+
+header h1{ margin:0; font-size:20px; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
 header button{ position:absolute; right:16px; background:none; border:none; color:white; font-size:24px; cursor:pointer; }
 
 .container{ display:flex; height:calc(100vh - 56px); position: relative; }
 
-/* סיידבר */
 .sidebar{ 
   width: 250px; background:var(--bg-mid); border-left:1px solid #333; overflow-y:auto; 
   transition: 0.3s; position: fixed; right: 0; top: 56px; bottom: 0; z-index: 1000;
@@ -37,7 +47,6 @@ header button{ position:absolute; right:16px; background:none; border:none; colo
 }
 .sidebar.open{ transform: translateX(0); }
 
-/* מסך שקוף לסגירה */
 .overlay { position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; z-index: 999; }
 .overlay.active { display: block; }
 
@@ -58,7 +67,6 @@ li{ background:var(--bg-mid); border-radius:12px; padding:14px; display:flex; ju
 li.done-item { opacity: 0.4; background: #1a1a1a; filter: grayscale(0.5); }
 li.done-item span { text-decoration: line-through; }
 
-/* נראות הטקסט של הפריט */
 li span { display: block; }
 small { color: var(--muted); display: block; margin-top: 2px; }
 .item-note { color: #ffa726; font-size: 0.9em; display: block; margin-top: 4px; font-style: italic; }
@@ -72,6 +80,13 @@ li.מאפים{ border-right-color:#ffeb3b; }
 li.אחר{ border-right-color:#9e9e9e; }
 
 .hidden{ display:none !important; }
+
+/* Auth Overlay */
+#auth-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: var(--bg-dark); z-index: 10000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
 .mode-toggle { display: flex; margin-bottom: 10px; gap: 5px; }
 .mode-toggle button { flex: 1; padding: 8px; font-size: 14px; background: var(--bg-light); color: var(--muted); border: 1px solid #444; border-radius: 8px; cursor: pointer; }
 .mode-toggle button.active { background: var(--highlight); color: white; border-color: var(--accent); }
@@ -79,9 +94,17 @@ li.אחר{ border-right-color:#9e9e9e; }
 </head>
 
 <body>
+
+<div id="auth-overlay">
+  <h2 style="margin-bottom:20px;">🛒 רשימת קניות</h2>
+  <button onclick="login()" style="padding:15px 30px; font-size:18px; border-radius:8px; border:none; background:var(--accent); color:white; cursor:pointer; font-weight:bold;">
+    התחברות עם Google
+  </button>
+</div>
+
 <header>
   <button onclick="toggleSidebar()">☰</button>
-  <h1 onclick="goToHome()">רשימת קניות 🛒</h1>
+  <h1 onclick="goToHome()">🛒 רשימת קניות</h1>
 </header>
 
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
@@ -91,6 +114,7 @@ li.אחר{ border-right-color:#9e9e9e; }
     <button onclick="selectSidebarOption('add')">➕ הוסף פריט חדש</button>
     <div id="categoryButtons"></div>
     <button onclick="selectSidebarOption('settings')">⚙️ הגדרות</button>
+    <button onclick="logout()" style="background:#444; margin-top:20px;">יציאה 👋</button>
     <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
   </div>
 
@@ -147,12 +171,42 @@ const APP_URL = "https://Idanmus.github.io";
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
 
 let LIST_ID = "family_shared_list_v1";
 let currentView = 'הכל'; 
 let categories = [];
 let currentItems = []; 
 let addMode = 'single';
+
+/* AUTH LOGIC */
+function login() { auth.signInWithRedirect(provider); }
+function logout() { auth.signOut().then(() => location.reload()); }
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    const allowedEmails = ["idanmus@gmail.com", "edenrefaelov98@gmail.com"];
+    if (allowedEmails.includes(user.email.toLowerCase())) {
+      document.getElementById('auth-overlay').classList.add('hidden');
+      
+      // בחירה אוטומטית של המשתמש
+      if (user.email.toLowerCase() === "idanmus@gmail.com") {
+        document.getElementById('userSelect').value = "עידן";
+      } else {
+        document.getElementById('userSelect').value = "עדן";
+      }
+      
+      initCategories();
+      loadList();
+    } else {
+      alert("גישה נדחתה: המייל " + user.email + " אינו מורשה.");
+      auth.signOut();
+    }
+  } else {
+    document.getElementById('auth-overlay').classList.remove('hidden');
+  }
+});
 
 /* NAVIGATION */
 function goToHome() {
@@ -303,9 +357,6 @@ async function notifyTelegram() {
     alert("נשלח לטלגרם!");
   } catch (e) { alert("שגיאת תקשורת."); }
 }
-
-initCategories();
-loadList();
 </script>
 </body>
 </html>

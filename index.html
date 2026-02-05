@@ -1,98 +1,232 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="he" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>רשימת קניות</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>רשימת קניות</title>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
-<style>
-:root{
-  --bg-dark:#121212; --bg-mid:#1e1e1e; --bg-light:#2a2a2a;
-  --text:#ffffff; --muted:#b0b0b0; --accent: #4caf50; --telegram: #0088cc; --danger: #f44336;
-}
-body{ margin:0; font-family:system-ui, sans-serif; background:var(--bg-dark); color:var(--text); direction:rtl; }
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-mid: #1e1e1e;
+            --bg-light: #2a2a2a;
+            --text: #ffffff;
+            --muted: #b0b0b0;
+            --accent: #4caf50;
+            --danger: #f44336;
+        }
 
-header{ background:var(--bg-mid); padding:14px; display:flex; justify-content:center; align-items:center; position:sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
-header h1{ margin:0; font-size:20px; cursor: pointer; }
-header button{ position:absolute; right:16px; background:none; border:none; color:white; font-size:24px; cursor:pointer; }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            direction: rtl;
+        }
 
-#auth-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: var(--bg-dark); z-index: 10000;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-.hidden { display: none !important; }
+        /* מסך התחברות - מוצג כברירת מחדל */
+        #auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
 
-/* שאר העיצוב שלך */
-.container{ display:flex; height:calc(100vh - 56px); position: relative; }
-.sidebar{ width: 250px; background:var(--bg-mid); border-left:1px solid #333; position: fixed; right: 0; top: 56px; bottom: 0; z-index: 1000; transform: translateX(100%); transition: 0.3s; }
-.sidebar.open{ transform: translateX(0); }
-.overlay { position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; z-index: 999; }
-.overlay.active { display: block; }
-.sidebar button{ width:90%; margin:8px 5%; padding:12px; background:var(--bg-light); border:none; border-radius:8px; color:white; text-align:right; }
-main{ flex:1; padding:15px; overflow-y:auto; }
-.box{ background:var(--bg-mid); padding:14px; border-radius:12px; margin-bottom:20px; }
-input, select, textarea{ background:var(--bg-light); border:1px solid #444; color:white; padding:12px; border-radius:8px; width:100%; box-sizing: border-box; margin-bottom: 10px; }
-.add-btn{ background:var(--accent); color:white; border:none; border-radius:8px; padding:12px; width:100%; font-weight:bold; cursor:pointer; }
-ul{ list-style:none; padding:0; }
-li{ background:var(--bg-mid); border-radius:12px; padding:14px; margin-bottom:10px; display:flex; justify-content:space-between; border-right: 5px solid #9e9e9e; }
-li.done-item { opacity: 0.4; text-decoration: line-through; }
-</style>
+        .hidden { display: none !important; }
+
+        header {
+            background: var(--bg-mid);
+            padding: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        header h1 { margin: 0; font-size: 20px; cursor: pointer; }
+        header button { position: absolute; right: 16px; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+
+        .container { 
+            display: none; /* יוסתר עד להתחברות */
+            height: calc(100vh - 56px); 
+            position: relative; 
+        }
+
+        .sidebar {
+            width: 250px;
+            background: var(--bg-mid);
+            border-left: 1px solid #333;
+            position: fixed;
+            right: 0;
+            top: 56px;
+            bottom: 0;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            padding-top: 10px;
+        }
+
+        .sidebar.open { transform: translateX(0); }
+
+        .overlay {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 999;
+        }
+
+        .overlay.active { display: block; }
+
+        .sidebar button {
+            width: 90%;
+            margin: 5px 5%;
+            padding: 12px;
+            background: var(--bg-light);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            text-align: right;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .sidebar button:hover { background: #3a3a3a; }
+
+        main { flex: 1; padding: 15px; overflow-y: auto; }
+
+        .box { background: var(--bg-mid); padding: 14px; border-radius: 12px; margin-bottom: 20px; }
+
+        input, select {
+            background: var(--bg-light);
+            border: 1px solid #444;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .add-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 14px;
+            width: 100%;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        ul { list-style: none; padding: 0; }
+
+        li {
+            background: var(--bg-mid);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-right: 5px solid var(--accent);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        li.done-item { opacity: 0.4; text-decoration: line-through; border-right-color: #9e9e9e; }
+
+        .item-info { flex-grow: 1; margin-left: 10px; }
+        .item-info small { color: var(--muted); display: block; margin-top: 4px; }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+        }
+    </style>
 </head>
 <body>
 
-<div id="auth-overlay" class="hidden">
-  <h2 style="margin-bottom:20px;">🛒 רשימת קניות</h2>
-  <button onclick="login()" style="padding:15px 30px; font-size:18px; border-radius:8px; border:none; background:var(--accent); color:white; cursor:pointer; font-weight:bold;">
-    התחברות עם Google
-  </button>
+<div id="auth-overlay">
+    <h1 style="font-size: 40px; margin-bottom: 10px;">🛒</h1>
+    <h2 style="margin-bottom: 30px;">רשימת קניות</h2>
+    <button onclick="login()" style="padding: 15px 30px; font-size: 18px; border-radius: 50px; border: none; background: var(--accent); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
+        התחברות עם Google
+    </button>
 </div>
 
 <header>
-  <button onclick="toggleSidebar()">☰</button>
-  <h1 onclick="goToHome()">🛒 רשימת קניות</h1>
+    <button onclick="toggleSidebar()">☰</button>
+    <h1 onclick="goToHome()">🛒 רשימת קניות</h1>
 </header>
 
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
-<div class="container">
-  <div id="sidebar" class="sidebar">
-    <button onclick="selectSidebarOption('add')">➕ הוסף פריט</button>
-    <div id="categoryButtons"></div>
-    <button onclick="selectSidebarOption('settings')">⚙️ הגדרות</button>
-    <button onclick="logout()" style="background:#444;">יציאה 👋</button>
-  </div>
-
-  <main>
-    <div id="addItemForm" class="box hidden">
-        <input id="itemInput" placeholder="מה לקנות?">
-        <select id="categorySelect"></select>
-        <select id="userSelect">
-            <option value="עידן">עידן</option>
-            <option value="עדן">עדן</option>
-        </select>
-        <button class="add-btn" onclick="processAddition()">הוסף</button>
+<div class="container" id="main-container">
+    <div id="sidebar" class="sidebar">
+        <button onclick="selectSidebarOption('add')" style="background: var(--accent); margin-bottom: 15px;">➕ הוסף פריט חדש</button>
+        <div id="categoryButtons"></div>
+        <hr style="width: 90%; border: 0.5px solid #333; margin: 10px auto;">
+        <button onclick="selectSidebarOption('settings')">⚙️ הגדרות</button>
+        <button onclick="logout()" style="background: var(--bg-light); color: var(--muted); margin-top: auto; margin-bottom: 20px;">יציאה 👋</button>
     </div>
 
-    <div id="settings" class="box hidden">
-        <button class="add-btn" style="background:var(--danger);" onclick="clearCompleted()">מחק פריטים שנקנו</button>
-    </div>
+    <main>
+        <div id="addItemForm" class="box hidden">
+            <h3 style="margin-top:0">הוספת פריט</h3>
+            <input id="itemInput" placeholder="מה חסר בבית?">
+            <select id="categorySelect"></select>
+            <select id="userSelect">
+                <option value="עידן">עידן</option>
+                <option value="עדן">עדן</option>
+            </select>
+            <button class="add-btn" onclick="processAddition()">הוסף לרשימה</button>
+            <button onclick="selectSidebarOption('all')" style="background:none; border:none; color:var(--muted); width:100%; margin-top:10px; cursor:pointer;">ביטול</button>
+        </div>
 
-    <div id="listView">
-      <ul id="list"></ul>
-    </div>
-  </main>
+        <div id="settings" class="box hidden">
+            <h3>אפשרויות</h3>
+            <button class="add-btn" style="background: var(--danger);" onclick="clearCompleted()">מחק פריטים שנקנו (V)</button>
+        </div>
+
+        <div id="listView">
+            <h3 id="currentCategoryTitle">הכל</h3>
+            <ul id="list"></ul>
+        </div>
+    </main>
 </div>
 
 <script>
+// הגדרות Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyCBKTDiDa7xnWgEOhPFeReLQDJgr9d4g8E",
-  authDomain: "shopping-list-cf3fd.firebaseapp.com",
-  projectId: "shopping-list-cf3fd"
+    apiKey: "AIzaSyCBKTDiDa7xnWgEOhPFeReLQDJgr9d4g8E",
+    authDomain: "shopping-list-cf3fd.firebaseapp.com",
+    projectId: "shopping-list-cf3fd"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -101,52 +235,72 @@ const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 
 const LIST_ID = "family_shared_list_v1";
+const CATEGORIES = ['ירקות ופירות', 'חלב וביצים', 'בשר ודגים', 'קפואים', 'ניקיון', 'אחר'];
 let currentItems = [];
+let filterCategory = 'all';
 
-function login() { auth.signInWithRedirect(provider); }
+// פונקציות התחברות
+function login() { auth.signInWithPopup(provider).catch(err => alert(err.message)); }
 function logout() { auth.signOut().then(() => location.reload()); }
 
-// בדיקת התחברות
+// ניהול מצב משתמש
 auth.onAuthStateChanged(user => {
-  if (user) {
-    const email = user.email.toLowerCase();
-    console.log("Logged in as:", email);
-    if (email === "idanmus@gmail.com" || email === "edenrefaelov98@gmail.com") {
-      document.getElementById('auth-overlay').classList.add('hidden');
-      document.getElementById('userSelect').value = (email === "idanmus@gmail.com") ? "עידן" : "עדן";
-      initCategories();
-      loadList();
+    const authOverlay = document.getElementById('auth-overlay');
+    const container = document.getElementById('main-container');
+
+    if (user) {
+        const email = user.email.toLowerCase();
+        if (email === "idanmus@gmail.com" || email === "edenrefaelov98@gmail.com") {
+            authOverlay.classList.add('hidden');
+            container.style.display = 'flex';
+            document.getElementById('userSelect').value = (email === "idanmus@gmail.com") ? "עידן" : "עדן";
+            initCategories();
+            loadList();
+        } else {
+            alert("גישה נדחתה: " + email);
+            auth.signOut();
+        }
     } else {
-      alert("מייל לא מורשה: " + email);
-      auth.signOut();
+        authOverlay.classList.remove('hidden');
+        container.style.display = 'none';
     }
-  } else {
-    document.getElementById('auth-overlay').classList.remove('hidden');
-  }
 });
 
-/* פונקציות עזר */
+function initCategories() {
+    const sel = document.getElementById('categorySelect');
+    sel.innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    const btnContainer = document.getElementById('categoryButtons');
+    btnContainer.innerHTML = `<button onclick="selectSidebarOption('all')">📋 הכל</button>`;
+    btnContainer.innerHTML += CATEGORIES.map(c => 
+        `<button onclick="selectSidebarOption('${c}')">▫️ ${c}</button>`
+    ).join('');
+}
+
 function toggleSidebar() { 
     document.getElementById('sidebar').classList.toggle('open'); 
     document.getElementById('overlay').classList.toggle('active');
 }
-function goToHome() { selectSidebarOption('הכל'); }
+
+function goToHome() { selectSidebarOption('all'); }
+
 function selectSidebarOption(opt) {
     document.getElementById('addItemForm').classList.add('hidden');
     document.getElementById('settings').classList.add('hidden');
     document.getElementById('listView').classList.remove('hidden');
+
     if(opt === 'add') {
         document.getElementById('addItemForm').classList.remove('hidden');
         document.getElementById('listView').classList.add('hidden');
+    } else if(opt === 'settings') {
+        document.getElementById('settings').classList.remove('hidden');
+    } else {
+        filterCategory = opt;
+        document.getElementById('currentCategoryTitle').innerText = (opt === 'all' ? 'הכל' : opt);
+        renderList();
     }
-    if(opt === 'settings') document.getElementById('settings').classList.remove('hidden');
+    
     if(document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
-}
-
-function initCategories() {
-    const sel = document.getElementById('categorySelect');
-    const cats = ['ירקות', 'פירות', 'חלב', 'בשר', 'מאפים', 'אחר'];
-    sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
 function loadList() {
@@ -159,29 +313,71 @@ function loadList() {
 
 function renderList() {
     const listEl = document.getElementById('list');
-    listEl.innerHTML = currentItems.map(item => `
+    const filtered = filterCategory === 'all' 
+        ? currentItems 
+        : currentItems.filter(i => i.category === filterCategory);
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<p style="text-align:center; color:var(--muted); margin-top:20px;">אין פריטים להצגה</p>`;
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(item => `
         <li class="${item.done ? 'done-item' : ''}" onclick="toggleDone('${item.id}', ${item.done})">
-            <span><strong>${item.text}</strong><br><small>${item.user}</small></span>
-            <button onclick="event.stopPropagation(); deleteItem('${item.id}')">🗑</button>
+            <div class="item-info">
+                <strong>${item.text}</strong>
+                <small>${item.category} | הוסיף: ${item.user}</small>
+            </div>
+            <button class="delete-btn" onclick="event.stopPropagation(); deleteItem('${item.id}')">🗑</button>
         </li>
     `).join('');
 }
 
 async function processAddition() {
-    const text = document.getElementById('itemInput').value;
+    const text = document.getElementById('itemInput').value.trim();
+    const category = document.getElementById('categorySelect').value;
+    const user = document.getElementById('userSelect').value;
+
     if(!text) return;
+
     await db.collection("lists").doc(LIST_ID).collection("items").add({
         text, 
-        user: document.getElementById('userSelect').value,
+        category,
+        user,
         done: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+
     document.getElementById('itemInput').value = '';
-    selectSidebarOption('הכל');
+    selectSidebarOption('all');
 }
 
-function toggleDone(id, status) { db.collection("lists").doc(LIST_ID).collection("items").doc(id).update({done: !status}); }
-function deleteItem(id) { if(confirm("למחוק?")) db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete(); }
+function toggleDone(id, status) { 
+    db.collection("lists").doc(LIST_ID).collection("items").doc(id).update({done: !status}); 
+}
+
+function deleteItem(id) { 
+    if(confirm("למחוק את הפריט?")) {
+        db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete();
+    }
+}
+
+async function clearCompleted() {
+    if(!confirm("למחוק את כל הפריטים שסומנו ב-V?")) return;
+    
+    const doneItems = currentItems.filter(i => i.done);
+    const batch = db.batch();
+    
+    doneItems.forEach(item => {
+        const ref = db.collection("lists").doc(LIST_ID).collection("items").doc(item.id);
+        batch.delete(ref);
+    });
+    
+    await batch.commit();
+    alert("הפריטים נמחקו");
+    selectSidebarOption('all');
+}
 </script>
+
 </body>
 </html>

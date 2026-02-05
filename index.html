@@ -26,9 +26,10 @@
             background: var(--bg-dark);
             color: var(--text);
             direction: rtl;
+            overflow-x: hidden;
         }
 
-        /* מסך התחברות - מוצג כברירת מחדל */
+        /* מסך התחברות - מופיע תמיד בטעינה */
         #auth-overlay {
             position: fixed;
             top: 0;
@@ -62,7 +63,7 @@
         header button { position: absolute; right: 16px; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
 
         .container { 
-            display: none; /* יוסתר עד להתחברות */
+            display: none; /* מוסתר עד אישור כניסה */
             height: calc(100vh - 56px); 
             position: relative; 
         }
@@ -111,9 +112,7 @@
             font-size: 16px;
         }
 
-        .sidebar button:hover { background: #3a3a3a; }
-
-        main { flex: 1; padding: 15px; overflow-y: auto; }
+        main { flex: 1; padding: 15px; overflow-y: auto; width: 100%; box-sizing: border-box; }
 
         .box { background: var(--bg-mid); padding: 14px; border-radius: 12px; margin-bottom: 20px; }
 
@@ -138,7 +137,6 @@
             width: 100%;
             font-weight: bold;
             cursor: pointer;
-            font-size: 16px;
         }
 
         ul { list-style: none; padding: 0; }
@@ -152,30 +150,20 @@
             justify-content: space-between;
             align-items: center;
             border-right: 5px solid var(--accent);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
         li.done-item { opacity: 0.4; text-decoration: line-through; border-right-color: #9e9e9e; }
 
-        .item-info { flex-grow: 1; margin-left: 10px; }
-        .item-info small { color: var(--muted); display: block; margin-top: 4px; }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            color: var(--danger);
-            font-size: 18px;
-            cursor: pointer;
-            padding: 5px;
-        }
+        .delete-btn { background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay">
-    <h1 style="font-size: 40px; margin-bottom: 10px;">🛒</h1>
+    <h1 style="font-size: 50px; margin-bottom: 10px;">🛒</h1>
     <h2 style="margin-bottom: 30px;">רשימת קניות</h2>
-    <button onclick="login()" style="padding: 15px 30px; font-size: 18px; border-radius: 50px; border: none; background: var(--accent); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
+    <div id="login-status" style="margin-bottom: 15px; color: var(--muted);"></div>
+    <button id="login-btn" onclick="login()" style="padding: 15px 30px; font-size: 18px; border-radius: 50px; border: none; background: var(--accent); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
         התחברות עם Google
     </button>
 </div>
@@ -189,29 +177,28 @@
 
 <div class="container" id="main-container">
     <div id="sidebar" class="sidebar">
-        <button onclick="selectSidebarOption('add')" style="background: var(--accent); margin-bottom: 15px;">➕ הוסף פריט חדש</button>
+        <button onclick="selectSidebarOption('add')" style="background: var(--accent);">➕ הוסף פריט</button>
         <div id="categoryButtons"></div>
-        <hr style="width: 90%; border: 0.5px solid #333; margin: 10px auto;">
+        <hr style="width: 90%; border: 0.2px solid #333; margin: 10px auto;">
         <button onclick="selectSidebarOption('settings')">⚙️ הגדרות</button>
-        <button onclick="logout()" style="background: var(--bg-light); color: var(--muted); margin-top: auto; margin-bottom: 20px;">יציאה 👋</button>
+        <button onclick="logout()" style="margin-top: auto; margin-bottom: 20px; color: var(--muted);">יציאה</button>
     </div>
 
     <main>
         <div id="addItemForm" class="box hidden">
-            <h3 style="margin-top:0">הוספת פריט</h3>
-            <input id="itemInput" placeholder="מה חסר בבית?">
+            <h3>הוספת פריט</h3>
+            <input id="itemInput" placeholder="מה חסר?">
             <select id="categorySelect"></select>
             <select id="userSelect">
                 <option value="עידן">עידן</option>
                 <option value="עדן">עדן</option>
             </select>
             <button class="add-btn" onclick="processAddition()">הוסף לרשימה</button>
-            <button onclick="selectSidebarOption('all')" style="background:none; border:none; color:var(--muted); width:100%; margin-top:10px; cursor:pointer;">ביטול</button>
         </div>
 
         <div id="settings" class="box hidden">
-            <h3>אפשרויות</h3>
-            <button class="add-btn" style="background: var(--danger);" onclick="clearCompleted()">מחק פריטים שנקנו (V)</button>
+            <h3>הגדרות</h3>
+            <button class="add-btn" style="background: var(--danger);" onclick="clearCompleted()">מחק פריטים שנקנו</button>
         </div>
 
         <div id="listView">
@@ -222,7 +209,7 @@
 </div>
 
 <script>
-// הגדרות Firebase
+// הגדרות Firebase - ודא שזה תואם לפרויקט שלך
 const firebaseConfig = {
     apiKey: "AIzaSyCBKTDiDa7xnWgEOhPFeReLQDJgr9d4g8E",
     authDomain: "shopping-list-cf3fd.firebaseapp.com",
@@ -240,29 +227,41 @@ let currentItems = [];
 let filterCategory = 'all';
 
 // פונקציות התחברות
-function login() { auth.signInWithPopup(provider).catch(err => alert(err.message)); }
+function login() { 
+    document.getElementById('login-status').innerText = "מתחבר...";
+    auth.signInWithPopup(provider).catch(err => {
+        alert("שגיאת התחברות: " + err.message);
+        document.getElementById('login-status').innerText = "";
+    }); 
+}
+
 function logout() { auth.signOut().then(() => location.reload()); }
 
-// ניהול מצב משתמש
+// האזנה למצב המשתמש - כאן התיקון המרכזי
 auth.onAuthStateChanged(user => {
     const authOverlay = document.getElementById('auth-overlay');
     const container = document.getElementById('main-container');
 
     if (user) {
         const email = user.email.toLowerCase();
+        // רשימת מיילים מורשים
         if (email === "idanmus@gmail.com" || email === "edenrefaelov98@gmail.com") {
-            authOverlay.classList.add('hidden');
+            console.log("משתמש מזוהה:", email);
+            authOverlay.classList.add('hidden'); // רק כאן אנחנו מסתירים את המסך
             container.style.display = 'flex';
+            
             document.getElementById('userSelect').value = (email === "idanmus@gmail.com") ? "עידן" : "עדן";
             initCategories();
             loadList();
         } else {
-            alert("גישה נדחתה: " + email);
+            alert("אין לך הרשאה לגשת לרשימה זו (" + email + ")");
             auth.signOut();
         }
     } else {
+        console.log("אין משתמש מחובר");
         authOverlay.classList.remove('hidden');
         container.style.display = 'none';
+        document.getElementById('login-status').innerText = "";
     }
 });
 
@@ -282,8 +281,6 @@ function toggleSidebar() {
     document.getElementById('overlay').classList.toggle('active');
 }
 
-function goToHome() { selectSidebarOption('all'); }
-
 function selectSidebarOption(opt) {
     document.getElementById('addItemForm').classList.add('hidden');
     document.getElementById('settings').classList.add('hidden');
@@ -299,7 +296,6 @@ function selectSidebarOption(opt) {
         document.getElementById('currentCategoryTitle').innerText = (opt === 'all' ? 'הכל' : opt);
         renderList();
     }
-    
     if(document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
 }
 
@@ -308,7 +304,7 @@ function loadList() {
       .onSnapshot(snap => {
           currentItems = snap.docs.map(d => ({id: d.id, ...d.data()}));
           renderList();
-      }, err => console.error("Firestore Error:", err));
+      });
 }
 
 function renderList() {
@@ -318,15 +314,15 @@ function renderList() {
         : currentItems.filter(i => i.category === filterCategory);
 
     if (filtered.length === 0) {
-        listEl.innerHTML = `<p style="text-align:center; color:var(--muted); margin-top:20px;">אין פריטים להצגה</p>`;
+        listEl.innerHTML = `<p style="text-align:center; color:var(--muted);">אין פריטים</p>`;
         return;
     }
 
     listEl.innerHTML = filtered.map(item => `
         <li class="${item.done ? 'done-item' : ''}" onclick="toggleDone('${item.id}', ${item.done})">
-            <div class="item-info">
-                <strong>${item.text}</strong>
-                <small>${item.category} | הוסיף: ${item.user}</small>
+            <div>
+                <strong>${item.text}</strong><br>
+                <small>${item.category} | ${item.user}</small>
             </div>
             <button class="delete-btn" onclick="event.stopPropagation(); deleteItem('${item.id}')">🗑</button>
         </li>
@@ -334,21 +330,19 @@ function renderList() {
 }
 
 async function processAddition() {
-    const text = document.getElementById('itemInput').value.trim();
-    const category = document.getElementById('categorySelect').value;
-    const user = document.getElementById('userSelect').value;
-
+    const input = document.getElementById('itemInput');
+    const text = input.value.trim();
     if(!text) return;
 
     await db.collection("lists").doc(LIST_ID).collection("items").add({
         text, 
-        category,
-        user,
+        category: document.getElementById('categorySelect').value,
+        user: document.getElementById('userSelect').value,
         done: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    document.getElementById('itemInput').value = '';
+    input.value = '';
     selectSidebarOption('all');
 }
 
@@ -357,26 +351,21 @@ function toggleDone(id, status) {
 }
 
 function deleteItem(id) { 
-    if(confirm("למחוק את הפריט?")) {
-        db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete();
-    }
+    if(confirm("למחוק?")) db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete();
 }
 
 async function clearCompleted() {
-    if(!confirm("למחוק את כל הפריטים שסומנו ב-V?")) return;
-    
     const doneItems = currentItems.filter(i => i.done);
+    if(doneItems.length === 0) return;
     const batch = db.batch();
-    
     doneItems.forEach(item => {
-        const ref = db.collection("lists").doc(LIST_ID).collection("items").doc(item.id);
-        batch.delete(ref);
+        batch.delete(db.collection("lists").doc(LIST_ID).collection("items").doc(item.id));
     });
-    
     await batch.commit();
-    alert("הפריטים נמחקו");
     selectSidebarOption('all');
 }
+
+function goToHome() { selectSidebarOption('all'); }
 </script>
 
 </body>

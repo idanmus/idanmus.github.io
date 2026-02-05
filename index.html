@@ -1,0 +1,217 @@
+
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>רשימת קניות</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin:0; padding:0;
+  background:#f7f7f7;
+  direction: rtl;
+}
+header {
+  background:#4dabf7;
+  color:white;
+  padding:15px 20px;
+  font-size:24px;
+  font-weight:bold;
+  position: relative;
+}
+header button {
+  position:absolute;
+  left:15px; top:15px;
+  font-size:22px;
+  background:none;
+  border:none;
+  color:white;
+  cursor:pointer;
+}
+
+.container { display:flex; height:calc(100vh - 60px); }
+.sidebar {
+  width:0;
+  background:#ffffff;
+  border-left:2px solid #ddd;
+  overflow-x:hidden;
+  transition:0.3s;
+  padding-top:20px;
+}
+.sidebar.open { width:220px; box-shadow:-2px 0 8px rgba(0,0,0,0.1);}
+.sidebar button { display:block; width:90%; margin:10px auto; padding:10px; border:none; border-radius:8px; font-size:16px; cursor:pointer; text-align:right; }
+.sidebar .category-btn { background:#f0f0f0; margin-top:5px; }
+.sidebar .category-btn:hover { background:#e0e0e0; }
+
+main { flex:1; padding:20px; overflow-y:auto; }
+#categoryTitle { font-size:18px; margin-bottom:10px; color:#555; }
+
+.add-form { display:none; margin-bottom:20px; background:white; padding:15px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+.add-form .row { display:flex; gap:10px; flex-wrap:wrap; }
+.add-form input, .add-form select { padding:10px; font-size:16px; border-radius:6px; border:1px solid #ccc; flex:1; min-width:100px; }
+.add-btn { background:#4dabf7; color:white; border:none; border-radius:6px; padding:10px; cursor:pointer; }
+.add-btn:hover { background:#3391e6; }
+
+ul { list-style:none; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px; }
+li {
+  padding:12px;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  transition:transform 0.2s, box-shadow 0.2s;
+}
+li:hover { transform:scale(1.02); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+
+.ירקות { background:#d0f0c0; }
+.פירות { background:#ffd8b1; }
+.בשר { background:#f8c0c0; }
+.חלב { background:#c0e0ff; }
+.מאפים { background:#fff3d0; }
+.אחר { background:#e0e0e0; }
+
+.eden { border-right:5px solid #ff4081; }
+.idan { border-right:5px solid #007aff; }
+
+.checkmark { margin-left:10px; font-weight:bold; font-size:18px; }
+.check-idan { color:#007aff; }
+.check-eden { color:#ff4081; }
+
+li span { cursor:pointer; flex:1; }
+li button { border:none; background:none; cursor:pointer; font-size:18px; }
+</style>
+</head>
+<body>
+
+<header>
+רשימת קניות
+<button onclick="toggleSidebar()">☰</button>
+</header>
+
+<div class="container">
+  <div id="sidebar" class="sidebar">
+    <button onclick="showAddItem()">➕ הוסף פריט חדש</button>
+    <div id="categories" style="margin-top:20px;">
+      <button class="category-btn" onclick="filterCategory('הכל')">הכל</button>
+      <button class="category-btn" onclick="filterCategory('ירקות')">🍀 ירקות/פירות</button>
+      <button class="category-btn" onclick="filterCategory('פירות')">🍑 פירות</button>
+      <button class="category-btn" onclick="filterCategory('בשר')">🥩 בשר/דגים</button>
+      <button class="category-btn" onclick="filterCategory('חלב')">🥛 חלב/מוצרי חלב</button>
+      <button class="category-btn" onclick="filterCategory('מאפים')">🥖 מאפים/דגנים</button>
+      <button class="category-btn" onclick="filterCategory('אחר')">🛒 אחר</button>
+    </div>
+  </div>
+
+  <main>
+    <div id="addItemForm" class="add-form">
+      <div class="row">
+        <input id="input" placeholder="מה צריך לקנות?">
+        <select id="categorySelect">
+          <option value="ירקות">🍀 ירקות/פירות</option>
+          <option value="פירות">🍑 פירות</option>
+          <option value="בשר">🥩 בשר/דגים</option>
+          <option value="חלב">🥛 חלב/מוצרי חלב</option>
+          <option value="מאפים">🥖 מאפים/דגנים</option>
+          <option value="אחר">🛒 אחר</option>
+        </select>
+        <select id="userSelect">
+          <option value="עידן">עידן</option>
+          <option value="עדן">עדן</option>
+        </select>
+        <button class="add-btn" onclick="addItem()">הוסף</button>
+      </div>
+    </div>
+    <div id="categoryTitle">קטגוריה: הכל</div>
+    <ul id="list"></ul>
+  </main>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCBKTDiDa7xnWgEOhPFeReLQDJgr9d4g8E",
+  authDomain: "shopping-list-cf3fd.firebaseapp.com",
+  projectId: "shopping-list-cf3fd",
+  storageBucket: "shopping-list-cf3fd.firebasestorage.app",
+  messagingSenderId: "688288124536",
+  appId: "1:688288124536:web:f0e8f3fe1f51540b84e78d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let LIST_ID = new Date().toISOString().split('T')[0];
+let currentCategory = 'הכל';
+
+const listEl = document.getElementById("list");
+const inputEl = document.getElementById("input");
+const categorySelect = document.getElementById("categorySelect");
+const userEl = document.getElementById("userSelect");
+const addForm = document.getElementById("addItemForm");
+const categoryTitle = document.getElementById("categoryTitle");
+
+function toggleSidebar(){
+  document.getElementById("sidebar").classList.toggle("open");
+}
+
+function showAddItem(){
+  addForm.style.display = addForm.style.display==='none'?'block':'none';
+}
+
+function render(items){
+  listEl.innerHTML="";
+  items.forEach(doc=>{
+    const item = doc.data();
+    if(currentCategory!=='הכל' && item.category!==currentCategory) return;
+    const li=document.createElement("li");
+    li.classList.add(item.category,item.user==='עידן'?'idan':'eden');
+    const check = item.done?`<span class="checkmark ${item.user==='עידן'?'check-idan':'check-eden'}">✔️</span>`:'';
+    li.innerHTML=`<span onclick="toggleDone('${doc.id}',${item.done})">
+      ${item.text} <span class="category">${item.category}</span> <small>(${item.user})</small> ${check}
+    </span>
+    <button onclick="removeItem('${doc.id}')">🗑️</button>`;
+    listEl.appendChild(li);
+  });
+  categoryTitle.textContent = currentCategory==='הכל'?'קטגוריה: הכל':`קטגוריה: ${currentCategory}`;
+}
+
+function loadList(){
+  db.collection("lists").doc(LIST_ID).collection("items")
+    .orderBy("createdAt")
+    .onSnapshot(snapshot=>render(snapshot.docs));
+}
+
+function addItem(){
+  const text = inputEl.value.trim();
+  const category = categorySelect.value;
+  const user = userEl.value;
+  if(!text) return;
+  db.collection("lists").doc(LIST_ID).collection("items").add({
+    text, category, user, done:false, createdAt:new Date()
+  });
+  inputEl.value="";
+  addForm.style.display='none';
+}
+
+function toggleDone(id,done){
+  db.collection("lists").doc(LIST_ID).collection("items").doc(id).update({done:!done});
+}
+
+function removeItem(id){
+  db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete();
+}
+
+function filterCategory(cat){
+  currentCategory = cat;
+  loadList();
+}
+
+loadList();
+</script>
+
+</body>
+</html>

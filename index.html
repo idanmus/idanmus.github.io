@@ -2,397 +2,310 @@
 <html lang="he">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>רשימת קניות</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>רשימת קניות משותפת</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="קניות">
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3724/3724720.png">
+<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3724/3724720.png">
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <style>
 :root{
-  --bg-dark:#121212;
-  --bg-mid:#1e1e1e;
-  --bg-light:#2a2a2a;
-  --text:#ffffff;
-  --muted:#b0b0b0;
-  --highlight:#555;
+  --bg-dark:#121212; --bg-mid:#1e1e1e; --bg-light:#2a2a2a;
+  --text:#ffffff; --muted:#b0b0b0; --highlight:#555;
+  --accent: #4caf50; --telegram: #0088cc; --danger: #f44336;
 }
-body{
-  margin:0;
-  font-family:'Segoe UI',system-ui,sans-serif;
-  background:var(--bg-dark);
-  color:var(--text);
-  direction:rtl;
+body{ margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:var(--bg-dark); color:var(--text); direction:rtl; overflow-x: hidden; }
+header{ background:var(--bg-mid); padding:14px 16px; display:flex; justify-content:center; align-items:center; position:sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+
+/* כותרת כפתור בית */
+header h1{ margin:0; font-size:20px; cursor: pointer; user-select: none; }
+header button{ position:absolute; right:16px; background:none; border:none; color:white; font-size:24px; cursor:pointer; }
+
+.container{ display:flex; height:calc(100vh - 56px); position: relative; }
+
+/* סיידבר */
+.sidebar{ 
+  width: 250px; background:var(--bg-mid); border-left:1px solid #333; overflow-y:auto; 
+  transition: 0.3s; position: fixed; right: 0; top: 56px; bottom: 0; z-index: 1000;
+  transform: translateX(100%); 
 }
-header{
-  background:var(--bg-mid);
-  padding:14px 16px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  position:relative;
-}
-header h1{
-  margin:0;
-  font-size:24px;
-  font-weight:600;
-  text-align:center;
-}
-header button{
-  position:absolute;
-  right:16px;
-  background:none;
-  border:none;
-  color:white;
-  font-size:24px;
-  cursor:pointer;
-}
-.container{ display:flex; height:calc(100vh - 56px); }
-.sidebar{
-  width:0;
-  background:var(--bg-mid);
-  border-right:1px solid #333;
-  overflow:hidden;
-  transition:0.3s;
-  flex-shrink:0;
-}
-.sidebar.open{ width:230px; }
-.sidebar button{
-  width:90%;
-  margin:8px auto;
-  padding:10px;
-  background:var(--bg-light);
-  border:none;
-  border-radius:8px;
-  color:white;
-  font-size:15px;
-  cursor:pointer;
-}
-.sidebar button:hover{ background:#333; }
-.sidebar button.active{ background:var(--highlight); }
-main{ flex:1; padding:20px; overflow-y:auto; }
-#categoryTitle{ color:var(--muted); margin-bottom:12px; }
+.sidebar.open{ transform: translateX(0); }
+
+/* מסך שקוף לסגירה */
+.overlay { position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; z-index: 999; }
+.overlay.active { display: block; }
+
+.sidebar button{ width:90%; margin:8px 5%; padding:12px; background:var(--bg-light); border:none; border-radius:8px; color:white; text-align:right; cursor:pointer; }
+
+main{ flex:1; padding:15px; overflow-y:auto; width: 100%; }
+#categoryTitle{ color:var(--muted); margin-bottom:12px; font-weight: bold; }
 .box{ background:var(--bg-mid); padding:14px; border-radius:12px; margin-bottom:20px; }
-input, select{
-  background:var(--bg-light);
-  border:1px solid #333;
-  color:white;
-  padding:10px;
-  border-radius:8px;
-  font-size:15px;
-  width:100%;
-}
-.row{ display:flex; gap:10px; flex-wrap:wrap; }
-.add-btn{ background:white; color:black; border:none; border-radius:8px; padding:10px 16px; cursor:pointer; font-weight:600; }
-ul{ list-style:none; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
-li{
-  background:var(--bg-mid);
-  border-radius:14px;
-  padding:14px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  cursor:pointer;
-}
-li small{ color:var(--muted); }
-li button{ background:none; border:none; color:#aaa; font-size:18px; cursor:pointer; }
-.checkmark{ margin-right:6px; }
-li.ירקות{ border-left:5px solid #4caf50; }
-li.פירות{ border-left:5px solid #ff9800; }
-li.בשר{ border-left:5px solid #f44336; }
-li.חלב{ border-left:5px solid #2196f3; }
-li.מאפים{ border-left:5px solid #ffeb3b; }
-li.אחר{ border-left:5px solid #9e9e9e; }
-li.נקנה{ border-left:5px solid #8bc34a; }
-.hidden{ display:none; }
-#history{ margin-top:20px; }
-#history button{
-  background:var(--bg-light);
-  border:none;
-  border-radius:8px;
-  width:100%;
-  padding:10px;
-  margin-bottom:5px;
-  color:white;
-  cursor:pointer;
-}
-#history button:hover{ background:#555; }
+input, select, textarea{ background:var(--bg-light); border:1px solid #444; color:white; padding:12px; border-radius:8px; font-size:16px; width:100%; box-sizing: border-box; margin-bottom: 10px; }
+textarea { height: 120px; resize: vertical; color: white; font-family: inherit; }
+.input-group { display: flex; gap: 8px; }
+.add-btn{ background:var(--accent); color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:600; width:100%; font-size: 16px; }
+.telegram-btn { background: var(--telegram); margin-top: 10px; }
+.clear-btn { background: var(--danger); margin-bottom: 20px; }
+
+ul{ list-style:none; padding:0; display:grid; grid-template-columns:1fr; gap:10px; }
+li{ background:var(--bg-mid); border-radius:12px; padding:14px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; border-right: 5px solid transparent; }
+li.done-item { opacity: 0.4; background: #1a1a1a; filter: grayscale(0.5); }
+li.done-item span { text-decoration: line-through; }
+
+/* נראות הטקסט של הפריט */
+li span { display: block; }
+small { color: var(--muted); display: block; margin-top: 2px; }
+.item-note { color: #ffa726; font-size: 0.9em; display: block; margin-top: 4px; font-style: italic; }
+
+/* צבעי קטגוריות */
+li.ירקות{ border-right-color:#4caf50; }
+li.פירות{ border-right-color:#ff9800; }
+li.בשר{ border-right-color:#f44336; }
+li.חלב{ border-right-color:#2196f3; }
+li.מאפים{ border-right-color:#ffeb3b; }
+li.אחר{ border-right-color:#9e9e9e; }
+
+.hidden{ display:none !important; }
+.mode-toggle { display: flex; margin-bottom: 10px; gap: 5px; }
+.mode-toggle button { flex: 1; padding: 8px; font-size: 14px; background: var(--bg-light); color: var(--muted); border: 1px solid #444; border-radius: 8px; cursor: pointer; }
+.mode-toggle button.active { background: var(--highlight); color: white; border-color: var(--accent); }
 </style>
 </head>
 
 <body>
 <header>
   <button onclick="toggleSidebar()">☰</button>
-  <h1>רשימת קניות</h1>
+  <h1 onclick="goToHome()">רשימת קניות 🛒</h1>
 </header>
+
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
 <div class="container">
   <div id="sidebar" class="sidebar">
-    <button onclick="selectSidebarOption('add')">➕ הוסף פריט</button>
+    <button onclick="selectSidebarOption('add')">➕ הוסף פריט חדש</button>
     <div id="categoryButtons"></div>
     <button onclick="selectSidebarOption('settings')">⚙️ הגדרות</button>
-    <h3 style="color:#bbb;margin:10px;">רשימות קודמות:</h3>
-    <div id="history"></div>
+    <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
   </div>
 
   <main>
     <div id="addItemForm" class="box hidden">
-      <div class="row">
-        <input id="itemInput" placeholder="מה צריך לקנות?">
-        <select id="categorySelect"></select>
-        <select id="userSelect">
-          <option>עידן</option>
-          <option>עדן</option>
-        </select>
-        <button class="add-btn" onclick="addItem()">הוסף</button>
+      <div class="mode-toggle">
+        <button id="singleModeBtn" class="active" onclick="setAddMode('single')">פריט בודד</button>
+        <button id="multiModeBtn" onclick="setAddMode('multi')">הוספה מרובה</button>
       </div>
+      <div id="singleInputFields">
+        <div class="input-group">
+          <input id="itemInput" placeholder="מה להוסיף?" style="flex: 3;">
+          <input id="amountInput" placeholder="כמות" style="flex: 1;">
+        </div>
+        <input id="noteInput" placeholder="הערה (אופציונלי)...">
+      </div>
+      <div id="multiInputFields" class="hidden">
+        <textarea id="multiItemInput" placeholder="פורמט: שם פריט, כמות - הערה (כל פריט בשורה חדשה)"></textarea>
+      </div>
+      <select id="categorySelect"></select>
+      <select id="userSelect">
+        <option value="עידן">עידן</option>
+        <option value="עדן">עדן</option>
+      </select>
+      <button class="add-btn" onclick="processAddition()">הוסף לרשימה</button>
+      <button class="add-btn telegram-btn" onclick="notifyTelegram()">עדכן בטלגרם 📢</button>
     </div>
 
     <div id="settings" class="box hidden">
-      <h3>קטגוריות</h3>
-      <div class="row">
-        <input id="newCategory" placeholder="שם קטגוריה">
-        <button class="add-btn" onclick="addCategory()">הוסף</button>
-      </div>
-      <ul id="categoryList"></ul>
-      <hr style="border-color:#333">
-      <label>
-        <input type="checkbox" id="autoClose"> סגור סיידבר אחרי לחיצה
-      </label>
+      <button class="add-btn clear-btn" onclick="clearCompleted()">🧹 מחק פריטים שנקנו</button>
+      <input id="newCategory" placeholder="שם קטגוריה">
+      <button class="add-btn" onclick="addCategory()">הוסף קטגוריה</button>
+      <ul id="categoryList" style="margin-top:15px;"></ul>
     </div>
 
-    <div id="categoryTitle">קטגוריה: הכל</div>
-    <ul id="list"></ul>
+    <div id="listView">
+      <div id="categoryTitle">מציג: הכל</div>
+      <ul id="list"></ul>
+    </div>
   </main>
 </div>
 
 <script>
-/* FIREBASE */
+/* CONFIGURATION */
 const firebaseConfig = {
   apiKey: "AIzaSyCBKTDiDa7xnWgEOhPFeReLQDJgr9d4g8E",
   authDomain: "shopping-list-cf3fd.firebaseapp.com",
   projectId: "shopping-list-cf3fd"
 };
+
+const TELEGRAM_TOKEN = "8586024994:AAFeuZj5qSH0wUIbp7IU7JEPkYm7ztLxMHo";
+const TELEGRAM_CHAT_ID = "-5190708285";
+const APP_URL = "https://Idanmus.github.io"; 
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* STATE */
-let LIST_ID = new Date().toISOString().split('T')[0];
-let currentCategory = 'הכל';
+let LIST_ID = "family_shared_list_v1";
+let currentView = 'הכל'; 
 let categories = [];
+let currentItems = []; 
+let addMode = 'single';
 
-/* PREFS */
-let autoClose = JSON.parse(localStorage.getItem('autoClose')) ?? true;
-document.getElementById('autoClose').checked = autoClose;
-document.getElementById('autoClose').onchange = e=>{
-  autoClose = e.target.checked;
-  localStorage.setItem('autoClose', autoClose);
-};
+/* NAVIGATION */
+function goToHome() {
+  if(document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
+  selectSidebarOption('הכל');
+}
 
-/* ELEMENTS */
-const sidebar = document.getElementById('sidebar');
-const categoryButtons = document.getElementById('categoryButtons');
-const categorySelect = document.getElementById('categorySelect');
-const categoryList = document.getElementById('categoryList');
-const categoryTitle = document.getElementById('categoryTitle');
-const historyEl = document.getElementById('history');
-const addItemForm = document.getElementById('addItemForm');
-const settingsForm = document.getElementById('settings');
-const listEl = document.getElementById('list');
-
-/* SIDEBAR */
-function toggleSidebar(){ sidebar.classList.toggle('open'); }
+function toggleSidebar(){ 
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('active');
+}
 
 function selectSidebarOption(option){
-  addItemForm.classList.add('hidden');
-  settingsForm.classList.add('hidden');
-  listEl.style.display = 'none';
-
-  categoryButtons.querySelectorAll('button').forEach(btn=>btn.classList.remove('active'));
-
-  if(option==='add') addItemForm.classList.remove('hidden');
-  else if(option==='settings') settingsForm.classList.remove('hidden');
-  else filterCategory(option);
-
-  const btn = [...categoryButtons.children].find(b=>b.textContent===option);
-  if(btn) btn.classList.add('active');
-
-  if(autoClose) sidebar.classList.remove('open');
-}
-
-/* CATEGORIES SYNC */
-const metaRef = () => db.collection('lists').doc(LIST_ID).collection('meta').doc('settings');
-
-function initCategories(){
-  metaRef().onSnapshot(doc=>{
-    if(!doc.exists){
-      metaRef().set({ categories:['הכל','אחר','נקנה'] });
-      return;
-    }
-    categories = doc.data().categories;
-
-    if(!categories.includes('נקנה')){
-      metaRef().update({ categories: firebase.firestore.FieldValue.arrayUnion('נקנה') });
-    }
-
-    rebuildCategoriesUI();
-  });
-}
-
-function rebuildCategoriesUI(){
-  categoryButtons.innerHTML='';
-  categorySelect.innerHTML='';
-  categoryList.innerHTML='';
-
-  categories.forEach(cat=>{
-    categoryButtons.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`;
-    if(cat!=='הכל' && cat!=='נקנה'){
-      categorySelect.innerHTML += `<option>${cat}</option>`;
-      categoryList.innerHTML += `<li>${cat} <button onclick="removeCategory('${cat}')">❌</button></li>`;
-    }
-    if(cat==='נקנה'){
-      categoryList.innerHTML += `<li>${cat} (לא ניתן למחיקה)</li>`;
-    }
-  });
-
-  if(!categorySelect.value && categorySelect.options.length>0){
-    categorySelect.value = categorySelect.options[0].value;
+  currentView = option;
+  document.getElementById('addItemForm').classList.add('hidden');
+  document.getElementById('settings').classList.add('hidden');
+  document.getElementById('listView').classList.add('hidden');
+  if(option === 'add') document.getElementById('addItemForm').classList.remove('hidden');
+  else if(option === 'settings') document.getElementById('settings').classList.remove('hidden');
+  else {
+    document.getElementById('listView').classList.remove('hidden');
+    document.getElementById('categoryTitle').textContent = `מציג: ${option}`;
+    renderList();
   }
+  if(document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
+}
+
+function setAddMode(mode) {
+  addMode = mode;
+  document.getElementById('singleInputFields').classList.toggle('hidden', mode !== 'single');
+  document.getElementById('multiInputFields').classList.toggle('hidden', mode !== 'multi');
+  document.getElementById('singleModeBtn').classList.toggle('active', mode === 'single');
+  document.getElementById('multiModeBtn').classList.toggle('active', mode === 'multi');
+}
+
+/* CATEGORIES */
+const metaRef = () => db.collection('lists').doc(LIST_ID).collection('meta').doc('settings');
+function initCategories(){
+  metaRef().onSnapshot(doc => {
+    if(!doc.exists) { metaRef().set({ categories: ['הכל', 'ירקות', 'פירות', 'בשר', 'חלב', 'מאפים', 'אחר'] }); return; }
+    categories = doc.data().categories;
+    renderCategories();
+  });
+}
+
+function renderCategories(){
+  const btns = document.getElementById('categoryButtons');
+  const sel = document.getElementById('categorySelect');
+  const set = document.getElementById('categoryList');
+  btns.innerHTML = ''; sel.innerHTML = ''; set.innerHTML = '';
+  categories.forEach(cat => {
+    btns.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`;
+    if(cat !== 'הכל') {
+      sel.innerHTML += `<option value="${cat}">${cat}</option>`;
+      set.innerHTML += `<li>${cat} <button onclick="removeCategory('${cat}')">🗑</button></li>`;
+    }
+  });
 }
 
 function addCategory(){
-  const input = document.getElementById('newCategory');
-  const name = input.value.trim();
-  if(!name || categories.includes(name) || name==='נקנה') return;
-  metaRef().update({ categories: firebase.firestore.FieldValue.arrayUnion(name) });
-  input.value='';
+  const v = document.getElementById('newCategory').value.trim();
+  if(v) metaRef().update({ categories: firebase.firestore.FieldValue.arrayUnion(v) });
+  document.getElementById('newCategory').value = '';
 }
 
-function removeCategory(cat){
-  if(cat==='הכל' || cat==='נקנה') return;
-  metaRef().update({ categories: firebase.firestore.FieldValue.arrayRemove(cat) });
+function removeCategory(cat){ metaRef().update({ categories: firebase.firestore.FieldValue.arrayRemove(cat) }); }
+
+/* CORE LOGIC */
+async function processAddition() {
+  const cat = document.getElementById('categorySelect').value;
+  const user = document.getElementById('userSelect').value;
+  const batch = db.batch();
+
+  if (addMode === 'single') {
+    const text = document.getElementById('itemInput').value.trim();
+    const amount = document.getElementById('amountInput').value.trim();
+    const note = document.getElementById('noteInput').value.trim();
+    if(!text) return;
+    const ref = db.collection("lists").doc(LIST_ID).collection("items").doc();
+    batch.set(ref, { text: amount ? `${text} (${amount})` : text, note: note, category: cat, user: user, done: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  } else {
+    const lines = document.getElementById('multiItemInput').value.split('\n');
+    lines.forEach(line => {
+      let raw = line.trim();
+      if (raw) {
+        let text = raw, note = '';
+        if (text.includes('-')) { const p = text.split('-'); text = p[0].trim(); note = p.slice(1).join('-').trim(); }
+        if (text.includes(',')) { const p = text.split(','); text = `${p[0].trim()} (${p[1].trim()})`; }
+        const ref = db.collection("lists").doc(LIST_ID).collection("items").doc();
+        batch.set(ref, { text: text, note: note, category: cat, user: user, done: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      }
+    });
+  }
+  await batch.commit();
+  document.getElementById('itemInput').value = ''; document.getElementById('amountInput').value = ''; document.getElementById('noteInput').value = ''; document.getElementById('multiItemInput').value = '';
+  alert("נוסף בהצלחה!");
 }
-
-/* FILTER CATEGORY */
-function filterCategory(cat){
-  currentCategory = cat;
-  categoryTitle.textContent = `קטגוריה: ${cat}`;
-  listEl.style.display = 'block';
-  loadList();
-}
-
-/* ITEMS SYNC */
-function addItem(){
-  const text = document.getElementById('itemInput').value.trim();
-  if(!text) return;
-
-  let cat = categorySelect.value || 'אחר';
-
-  db.collection("lists").doc(LIST_ID).collection("items").add({
-    text,
-    category: cat,
-    originalCategory: cat,
-    user: document.getElementById('userSelect').value,
-    done: false,
-    createdAt: new Date()
-  })
-  .then(()=>{
-    document.getElementById('itemInput').value='';
-    addItemForm.classList.add('hidden');
-    listEl.style.display = 'block';
-  })
-  .catch(err => alert("שגיאה בהוספת פריט: " + err));
-}
-
-/* LIST SYNC */
-let unsubscribeList = null;
 
 function loadList(){
-  if(unsubscribeList) unsubscribeList();
-
-  unsubscribeList = db.collection("lists").doc(LIST_ID).collection("items")
-    .orderBy("createdAt")
-    .onSnapshot(snapshot=>{
-      let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      // מיון: קודם לפי קטגוריה, ואז לפי done
-      items.sort((a,b)=>{
-        if(a.category === 'נקנה' && b.category !== 'נקנה') return 1;
-        if(b.category === 'נקנה' && a.category !== 'נקנה') return -1;
-        if(a.done !== b.done) return a.done - b.done;
-        return a.createdAt - b.createdAt;
-      });
-
-      listEl.innerHTML='';
-
-      items.forEach(i=>{
-        if(currentCategory!=='הכל' && i.category!==currentCategory) return;
-
-        listEl.innerHTML += `
-          <li class="${i.category}" onclick="toggleDone('${i.id}', ${i.done})">
-            <span>
-              ${i.text}
-              ${i.done?'<span class="checkmark">✔️</span>':''}
-              <br>
-              <small>${i.category} · ${i.user}</small>
-            </span>
-            <button onclick="event.stopPropagation(); removeItem('${i.id}')">🗑</button>
-          </li>`;
-      });
-    });
+  db.collection("lists").doc(LIST_ID).collection("items").orderBy("createdAt", "desc")
+    .onSnapshot(snap => { currentItems = snap.docs.map(d => ({id: d.id, ...d.data()})); renderList(); });
 }
 
-function removeItem(id){
-  db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete();
-}
+function renderList(){
+  if(currentView === 'add' || currentView === 'settings') return;
+  const listEl = document.getElementById('list');
+  listEl.innerHTML = '';
+  const sorted = [...currentItems].sort((a, b) => (a.done !== b.done) ? a.done - b.done : a.category.localeCompare(b.category));
 
-/* ✔️ NEW: move checked items to category "נקנה" but keep originalCategory */
-function toggleDone(id, done){
-  db.collection("lists").doc(LIST_ID).collection("items").doc(id).get().then(doc=>{
-    const item = doc.data();
-    const original = item.originalCategory;
-
-    if(!done){
-      db.collection("lists").doc(LIST_ID).collection("items").doc(id).update({
-        done: true,
-        category: "נקנה"
-      });
-    } else {
-      db.collection("lists").doc(LIST_ID).collection("items").doc(id).update({
-        done: false,
-        category: original
-      });
-    }
+  sorted.forEach(item => {
+    if(currentView !== 'הכל' && item.category !== currentView) return;
+    const li = document.createElement('li');
+    li.className = `${item.category} ${item.done ? 'done-item' : ''}`;
+    li.onclick = () => db.collection("lists").doc(LIST_ID).collection("items").doc(item.id).update({ done: !item.done });
+    
+    let noteHtml = item.note ? `<span class="item-note">📝 ${item.note}</span>` : '';
+    li.innerHTML = `<span>
+                      <strong>${item.text}</strong>
+                      ${noteHtml}
+                      <small>${item.user} | ${item.category}</small>
+                    </span>
+                    <button onclick="event.stopPropagation(); deleteItem('${item.id}')">🗑</button>`;
+    listEl.appendChild(li);
   });
 }
 
-/* HISTORY */
-function loadHistory(){
-  db.collection("lists").get().then(snapshot=>{
-    historyEl.innerHTML='';
-    snapshot.docs.forEach(doc=>{
-      const btn = document.createElement('button');
-      btn.textContent = doc.id;
-      btn.onclick = ()=>{
-        LIST_ID = doc.id;
-        loadList();
-        initCategories();
-      };
-      historyEl.appendChild(btn);
-    });
-  });
+function deleteItem(id){ if(confirm("למחוק?")) db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete(); }
+
+async function clearCompleted() {
+  const comp = currentItems.filter(i => i.done);
+  if(!comp.length) return alert("אין פריטים שסומנו.");
+  if(confirm(`למחוק ${comp.length} פריטים?`)) {
+    const batch = db.batch();
+    comp.forEach(i => batch.delete(db.collection("lists").doc(LIST_ID).collection("items").doc(i.id)));
+    await batch.commit();
+  }
 }
 
-/* INIT */
-db.collection("lists").doc(LIST_ID).set({
-  createdAt: new Date()
-}, { merge: true });
+async function notifyTelegram() {
+  const act = currentItems.filter(i => !i.done);
+  if(!act.length) return alert("רשימה ריקה!");
+  act.sort((a, b) => a.category.localeCompare(b.category));
+  let msg = `🛒 *רשימת קניות מעודכנת מאת ${document.getElementById('userSelect').value}*\n\n`;
+  act.forEach(i => msg += `🔹 ${i.text}${i.note ? ` [${i.note}]` : ''} (${i.category})\n`);
+  msg += `\n🔗 [לפתיחת האפליקציה](${APP_URL})`;
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' }) });
+    alert("נשלח לטלגרם!");
+  } catch (e) { alert("שגיאת תקשורת."); }
+}
 
 initCategories();
 loadList();
-loadHistory();
 </script>
-
 </body>
 </html>
-

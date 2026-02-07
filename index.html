@@ -4,157 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>רשימת קניות</title>
-
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
     <style>
-        :root {
-            --bg-dark: #121212;
-            --bg-mid: #1e1e1e;
-            --bg-light: #2a2a2a;
-            --text: #ffffff;
-            --muted: #b0b0b0;
-            --accent: #4caf50;
-            --danger: #f44336;
-        }
-
-        body {
-            margin: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-            background: var(--bg-dark);
-            color: var(--text);
-            direction: rtl;
-            overflow-x: hidden;
-        }
-
-        /* מסך התחברות - מופיע תמיד בטעינה */
-        #auth-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg-dark);
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-
+        :root { --bg-dark: #121212; --bg-mid: #1e1e1e; --bg-light: #2a2a2a; --text: #ffffff; --muted: #b0b0b0; --accent: #4caf50; --danger: #f44336; }
+        body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg-dark); color: var(--text); direction: rtl; }
+        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
-
-        header {
-            background: var(--bg-mid);
-            padding: 14px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-        }
-
-        header h1 { margin: 0; font-size: 20px; cursor: pointer; }
-        header button { position: absolute; right: 16px; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
-
-        .container { 
-            display: none; /* מוסתר עד אישור כניסה */
-            height: calc(100vh - 56px); 
-            position: relative; 
-        }
-
-        .sidebar {
-            width: 250px;
-            background: var(--bg-mid);
-            border-left: 1px solid #333;
-            position: fixed;
-            right: 0;
-            top: 56px;
-            bottom: 0;
-            z-index: 1000;
-            transform: translateX(100%);
-            transition: 0.3s;
-            display: flex;
-            flex-direction: column;
-            padding-top: 10px;
-        }
-
-        .sidebar.open { transform: translateX(0); }
-
-        .overlay {
-            position: fixed;
-            top: 56px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: none;
-            z-index: 999;
-        }
-
-        .overlay.active { display: block; }
-
-        .sidebar button {
-            width: 90%;
-            margin: 5px 5%;
-            padding: 12px;
-            background: var(--bg-light);
-            border: none;
-            border-radius: 8px;
-            color: white;
-            text-align: right;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        main { flex: 1; padding: 15px; overflow-y: auto; width: 100%; box-sizing: border-box; }
-
-        .box { background: var(--bg-mid); padding: 14px; border-radius: 12px; margin-bottom: 20px; }
-
-        input, select {
-            background: var(--bg-light);
-            border: 1px solid #444;
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            width: 100%;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-
-        .add-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 14px;
-            width: 100%;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        ul { list-style: none; padding: 0; }
-
-        li {
-            background: var(--bg-mid);
-            border-radius: 12px;
-            padding: 14px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-right: 5px solid var(--accent);
-        }
-
+        .container { display: none; flex-direction: column; height: 100vh; }
+        header { background: var(--bg-mid); padding: 14px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .box { background: var(--bg-mid); padding: 15px; border-radius: 12px; margin: 15px; }
+        input, select { background: var(--bg-light); border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+        .add-btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 14px; width: 100%; font-weight: bold; cursor: pointer; }
+        ul { list-style: none; padding: 15px; margin: 0; }
+        li { background: var(--bg-mid); border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-right: 5px solid var(--accent); }
         li.done-item { opacity: 0.4; text-decoration: line-through; border-right-color: #9e9e9e; }
-
-        .delete-btn { background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -162,54 +27,23 @@
 <div id="auth-overlay">
     <h1 style="font-size: 50px; margin-bottom: 10px;">🛒</h1>
     <h2 style="margin-bottom: 30px;">רשימת קניות</h2>
-    <div id="login-status" style="margin-bottom: 15px; color: var(--muted);"></div>
-    <button id="login-btn" onclick="login()" style="padding: 15px 30px; font-size: 18px; border-radius: 50px; border: none; background: var(--accent); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
-        התחברות עם Google
-    </button>
+    <button onclick="login()" style="padding: 15px 30px; font-size: 18px; border-radius: 50px; border: none; background: var(--accent); color: white; cursor: pointer; font-weight: bold;">התחברות עם Google</button>
 </div>
 
-<header>
-    <button onclick="toggleSidebar()">☰</button>
-    <h1 onclick="goToHome()">🛒 רשימת קניות</h1>
-</header>
-
-<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-
 <div class="container" id="main-container">
-    <div id="sidebar" class="sidebar">
-        <button onclick="selectSidebarOption('add')" style="background: var(--accent);">➕ הוסף פריט</button>
-        <div id="categoryButtons"></div>
-        <hr style="width: 90%; border: 0.2px solid #333; margin: 10px auto;">
-        <button onclick="selectSidebarOption('settings')">⚙️ הגדרות</button>
-        <button onclick="logout()" style="margin-top: auto; margin-bottom: 20px; color: var(--muted);">יציאה</button>
-    </div>
-
+    <header><h1>🛒 רשימת קניות</h1></header>
     <main>
-        <div id="addItemForm" class="box hidden">
-            <h3>הוספת פריט</h3>
-            <input id="itemInput" placeholder="מה חסר?">
-            <select id="categorySelect"></select>
-            <select id="userSelect">
-                <option value="עידן">עידן</option>
-                <option value="עדן">עדן</option>
-            </select>
+        <div class="box">
+            <input id="itemInput" placeholder="מה להוסיף?">
+            <select id="userSelect"><option value="עידן">עידן</option><option value="עדן">עדן</option></select>
             <button class="add-btn" onclick="processAddition()">הוסף לרשימה</button>
         </div>
-
-        <div id="settings" class="box hidden">
-            <h3>הגדרות</h3>
-            <button class="add-btn" style="background: var(--danger);" onclick="clearCompleted()">מחק פריטים שנקנו</button>
-        </div>
-
-        <div id="listView">
-            <h3 id="currentCategoryTitle">הכל</h3>
-            <ul id="list"></ul>
-        </div>
+        <ul id="list"></ul>
+        <div style="padding: 15px;"><button onclick="logout()" style="background:none; border:none; color:var(--muted); cursor:pointer; width:100%;">יציאה מהחשבון</button></div>
     </main>
 </div>
 
 <script>
-// הגדרות Firebase - ודא שזה תואם לפרויקט שלך
 const firebaseConfig = {
     apiKey: "AIzaSyCBKTDiDa7xnWgEOhPFeReLQDJgr9d4g8E",
     authDomain: "shopping-list-cf3fd.firebaseapp.com",
@@ -220,153 +54,70 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
-
 const LIST_ID = "family_shared_list_v1";
-const CATEGORIES = ['ירקות ופירות', 'חלב וביצים', 'בשר ודגים', 'קפואים', 'ניקיון', 'אחר'];
-let currentItems = [];
-let filterCategory = 'all';
 
-// פונקציות התחברות
-function login() { 
-    document.getElementById('login-status').innerText = "מתחבר...";
-    auth.signInWithPopup(provider).catch(err => {
-        alert("שגיאת התחברות: " + err.message);
-        document.getElementById('login-status').innerText = "";
-    }); 
-}
-
+function login() { auth.signInWithPopup(provider).catch(err => alert(err.message)); }
 function logout() { auth.signOut().then(() => location.reload()); }
 
-// האזנה למצב המשתמש - כאן התיקון המרכזי
 auth.onAuthStateChanged(user => {
     const authOverlay = document.getElementById('auth-overlay');
     const container = document.getElementById('main-container');
 
     if (user) {
         const email = user.email.toLowerCase();
-        // רשימת מיילים מורשים
         if (email === "idanmus@gmail.com" || email === "edenrefaelov98@gmail.com") {
-            console.log("משתמש מזוהה:", email);
-            authOverlay.classList.add('hidden'); // רק כאן אנחנו מסתירים את המסך
+            authOverlay.classList.add('hidden');
             container.style.display = 'flex';
-            
-            document.getElementById('userSelect').value = (email === "idanmus@gmail.com") ? "עידן" : "עדן";
-            initCategories();
+            // רק כאן, כשיש הרשאה, נפעיל את טעינת הנתונים
             loadList();
         } else {
-            alert("אין לך הרשאה לגשת לרשימה זו (" + email + ")");
+            alert("מייל לא מורשה");
             auth.signOut();
         }
     } else {
-        console.log("אין משתמש מחובר");
         authOverlay.classList.remove('hidden');
         container.style.display = 'none';
-        document.getElementById('login-status').innerText = "";
     }
 });
 
-function initCategories() {
-    const sel = document.getElementById('categorySelect');
-    sel.innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-
-    const btnContainer = document.getElementById('categoryButtons');
-    btnContainer.innerHTML = `<button onclick="selectSidebarOption('all')">📋 הכל</button>`;
-    btnContainer.innerHTML += CATEGORIES.map(c => 
-        `<button onclick="selectSidebarOption('${c}')">▫️ ${c}</button>`
-    ).join('');
-}
-
-function toggleSidebar() { 
-    document.getElementById('sidebar').classList.toggle('open'); 
-    document.getElementById('overlay').classList.toggle('active');
-}
-
-function selectSidebarOption(opt) {
-    document.getElementById('addItemForm').classList.add('hidden');
-    document.getElementById('settings').classList.add('hidden');
-    document.getElementById('listView').classList.remove('hidden');
-
-    if(opt === 'add') {
-        document.getElementById('addItemForm').classList.remove('hidden');
-        document.getElementById('listView').classList.add('hidden');
-    } else if(opt === 'settings') {
-        document.getElementById('settings').classList.remove('hidden');
-    } else {
-        filterCategory = opt;
-        document.getElementById('currentCategoryTitle').innerText = (opt === 'all' ? 'הכל' : opt);
-        renderList();
-    }
-    if(document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
-}
-
 function loadList() {
+    // הוספת catch לשגיאות כדי שלא יתקע את הדף
     db.collection("lists").doc(LIST_ID).collection("items").orderBy("createdAt", "desc")
       .onSnapshot(snap => {
-          currentItems = snap.docs.map(d => ({id: d.id, ...d.data()}));
-          renderList();
+          const items = snap.docs.map(d => ({id: d.id, ...d.data()}));
+          renderList(items);
+      }, err => {
+          console.error("שגיאת פיירבייס:", err);
+          if(err.code === 'permission-denied') {
+              console.log("אין הרשאה - מוודא חיבור...");
+          }
       });
 }
 
-function renderList() {
+function renderList(items) {
     const listEl = document.getElementById('list');
-    const filtered = filterCategory === 'all' 
-        ? currentItems 
-        : currentItems.filter(i => i.category === filterCategory);
-
-    if (filtered.length === 0) {
-        listEl.innerHTML = `<p style="text-align:center; color:var(--muted);">אין פריטים</p>`;
-        return;
-    }
-
-    listEl.innerHTML = filtered.map(item => `
+    listEl.innerHTML = items.map(item => `
         <li class="${item.done ? 'done-item' : ''}" onclick="toggleDone('${item.id}', ${item.done})">
-            <div>
-                <strong>${item.text}</strong><br>
-                <small>${item.category} | ${item.user}</small>
-            </div>
-            <button class="delete-btn" onclick="event.stopPropagation(); deleteItem('${item.id}')">🗑</button>
+            <span><strong>${item.text}</strong><br><small>${item.user || ''}</small></span>
+            <button style="background:none; border:none; color:var(--danger); cursor:pointer;" onclick="event.stopPropagation(); deleteItem('${item.id}')">🗑</button>
         </li>
     `).join('');
 }
 
 async function processAddition() {
     const input = document.getElementById('itemInput');
-    const text = input.value.trim();
-    if(!text) return;
-
+    if(!input.value.trim()) return;
     await db.collection("lists").doc(LIST_ID).collection("items").add({
-        text, 
-        category: document.getElementById('categorySelect').value,
+        text: input.value,
         user: document.getElementById('userSelect').value,
         done: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-
     input.value = '';
-    selectSidebarOption('all');
 }
 
-function toggleDone(id, status) { 
-    db.collection("lists").doc(LIST_ID).collection("items").doc(id).update({done: !status}); 
-}
-
-function deleteItem(id) { 
-    if(confirm("למחוק?")) db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete();
-}
-
-async function clearCompleted() {
-    const doneItems = currentItems.filter(i => i.done);
-    if(doneItems.length === 0) return;
-    const batch = db.batch();
-    doneItems.forEach(item => {
-        batch.delete(db.collection("lists").doc(LIST_ID).collection("items").doc(item.id));
-    });
-    await batch.commit();
-    selectSidebarOption('all');
-}
-
-function goToHome() { selectSidebarOption('all'); }
+function toggleDone(id, status) { db.collection("lists").doc(LIST_ID).collection("items").doc(id).update({done: !status}); }
+function deleteItem(id) { if(confirm("למחוק?")) db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete(); }
 </script>
-
 </body>
 </html>

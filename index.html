@@ -20,27 +20,23 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: var(--bg-dark); }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
-        body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg-dark); color: var(--text); direction: rtl; overflow: hidden; }
+        
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        body { font-family: system-ui, sans-serif; background: var(--bg-dark); color: var(--text); direction: rtl; display: flex; flex-direction: column; }
         
         header { 
             background: var(--bg-mid); 
-            padding: 12px 16px; 
+            padding: 10px 16px; 
             text-align: center; 
-            position: sticky; 
-            top: 0; 
-            z-index: 100; 
+            position: relative;
+            z-index: 1001; 
             box-shadow: 0 2px 10px rgba(0,0,0,0.5); 
-            border-bottom: 1px solid #333; 
-            min-height: 50px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
         }
-        header h1 { margin: 0; font-size: 18px; cursor: pointer; display: inline-block; transition: transform 0.1s; }
-        header h1:active { transform: scale(0.95); opacity: 0.8; }
-        #currentListNameDisplay { font-size: 13px; color: var(--accent); font-weight: bold; margin-top: 6px; background: rgba(76, 175, 80, 0.1); display: inline-block; padding: 2px 10px; border-radius: 10px; align-self: center; }
+        header h1 { margin: 0; font-size: 18px; cursor: pointer; display: inline-block; }
+        #currentListNameDisplay { font-size: 12px; color: var(--accent); font-weight: bold; margin-top: 4px; background: rgba(76, 175, 80, 0.1); display: inline-block; padding: 2px 10px; border-radius: 10px; }
         
-        /* תיקון כפתור המבורגר */
         header .menu-toggle { 
             position: absolute; 
             right: 16px; 
@@ -51,34 +47,55 @@
             color: white; 
             font-size: 28px; 
             cursor: pointer; 
-            padding: 5px;
-            line-height: 1;
         }
 
-        .container { display: flex; height: calc(100vh - 85px); position: relative; }
-        .sidebar { width: 0; background: var(--bg-mid); border-left: 1px solid #333; overflow-y: auto; transition: 0.3s; flex-shrink: 0; z-index: 1000; }
-        .sidebar.open { width: 260px; }
-        .sidebar button { width: 90%; margin: 6px 5%; padding: 12px; background: var(--bg-light); border: none; border-radius: 10px; color: white; text-align: right; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .container { display: flex; flex: 1; position: relative; overflow: hidden; }
+        
+        .sidebar { 
+            width: 0; 
+            background: var(--bg-mid); 
+            border-left: 0 solid #333; 
+            overflow-y: auto; 
+            transition: 0.3s; 
+            z-index: 1000; 
+            position: relative;
+        }
+        .sidebar.open { width: 260px; border-left-width: 1px; }
+        .sidebar button { width: 90%; margin: 6px 5%; padding: 12px; background: var(--bg-light); border: none; border-radius: 10px; color: white; text-align: right; cursor: pointer; font-size: 14px; }
+        
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 900; }
         .overlay.active { display: block; }
-        main { flex: 1; padding: 15px; overflow-y: auto; }
+        
+        main { flex: 1; padding: 15px; overflow-y: auto; position: relative; }
+        
         .box { background: var(--bg-mid); padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         input, select { background: var(--bg-light); border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; text-align: right; }
         .add-btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 14px; cursor: pointer; font-weight: 600; width: 100%; font-size: 16px; }
+        
         .manage-btn { padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-bottom: 10px; }
         .btn-edit { background: var(--highlight); } .btn-delete { background: var(--danger); } .btn-cleanup { background: var(--warning); }
-        .btn-tg-now { background: var(--tg-blue) !important; font-weight: 500; }
-        .btn-tg-all { background: var(--tg-slate) !important; font-weight: 500; }
+        .btn-tg-now { background: var(--tg-blue) !important; } .btn-tg-all { background: var(--tg-slate) !important; }
+        
         ul { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
-        li { background: var(--bg-mid); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; border-right: 5px solid var(--accent); position: relative; }
+        li { background: var(--bg-mid); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; border-right: 5px solid var(--accent); }
         li.done-item { opacity: 0.3; text-decoration: line-through; border-right-color: #555 !important; }
+        
         .item-info { flex: 1; }
-        .cat-tag { font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 8px; vertical-align: middle; color: #ccc; }
+        .cat-tag { font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 8px; color: #ccc; }
         .item-note { color: var(--note-yellow); font-size: 13px; opacity: 0.9; }
-        .group-header { font-size: 14px; font-weight: bold; color: var(--accent); margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .no-cats-msg { text-align: center; padding: 20px; color: #aaa; }
+        .group-header { font-size: 14px; font-weight: bold; color: var(--accent); margin: 15px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        
         .hidden { display: none !important; }
         hr { border: 0; border-top: 1px solid #444; margin: 15px 0; }
+        
+        #categoryTitle { 
+            background: var(--bg-dark); 
+            padding: 5px 0; 
+            margin-bottom: 15px; 
+            position: sticky; 
+            top: -15px; 
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -88,6 +105,7 @@
 <header>
     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
     <h1 onclick="selectSidebarOption('הכל')">רשימת קניות 🛒</h1>
+    <br>
     <div id="currentListNameDisplay">טוען...</div>
 </header>
 
@@ -97,12 +115,12 @@
         <div id="categoryButtons"></div>
         <hr style="width: 80%; opacity: 0.2;">
         <button style="background: var(--warning);" onclick="selectSidebarOption('settings')">⚙️ הגדרות וניהול</button>
-        <div class="sidebar-label" style="color: #777; font-size: 11px; font-weight: bold; margin: 15px 16px 5px 0; text-transform: uppercase;">🔔 עדכוני טלגרם</div>
-        <button class="btn-tg-now" onclick="sendCurrentListUpdate()">עדכן על הרשימה הנוכחית</button>
-        <button class="btn-tg-all" onclick="sendGlobalUpdate()">שלח תזכורת לכל הרשימות</button>
+        <div style="color: #777; font-size: 11px; font-weight: bold; margin: 15px 16px 5px 0;">🔔 עדכוני טלגרם</div>
+        <button class="btn-tg-now" onclick="sendCurrentListUpdate()">עדכן על הרשימה</button>
+        <button class="btn-tg-all" onclick="sendGlobalUpdate()">תזכורת לכולם</button>
     </div>
 
-    <main>
+    <main id="mainArea">
         <div id="addPage" class="hidden">
             <div id="addContentContainer"></div>
         </div>
@@ -123,7 +141,7 @@
                 <hr>
                 <h3>🧹 ניהול תוכן</h3>
                 <button class="manage-btn btn-cleanup" onclick="clearAllItemsOnly()">🧺 מחק את כל הפריטים</button>
-                <button class="manage-btn btn-cleanup" style="background:#455a64;" onclick="fullResetList()">🔄 איפוס מלא (כולל קטגוריות)</button>
+                <button class="manage-btn btn-cleanup" style="background:#455a64;" onclick="fullResetList()">🔄 איפוס מלא</button>
                 <hr>
                 <h3>🏷️ ניהול קטגוריות</h3>
                 <div style="display:flex; gap:5px;">
@@ -141,7 +159,7 @@
         </div>
 
         <div id="listPage">
-            <div id="categoryTitle" style="font-weight:bold; color:var(--accent); margin-bottom:10px;">מציג: הכל</div>
+            <div id="categoryTitle" style="font-weight:bold; color:var(--accent);">מציג: הכל</div>
             <div id="listContainer"></div>
         </div>
     </main>
@@ -180,16 +198,16 @@
         const container = document.getElementById('addContentContainer');
         const realCats = categories.filter(c => c !== 'הכל');
         if (realCats.length === 0) {
-            container.innerHTML = `<div class="box no-cats-msg"><p>לא ניתן להוסיף מוצרים ללא קטגוריות.</p><button class="add-btn" onclick="selectSidebarOption('settings')">עבור להגדרות</button></div>`;
+            container.innerHTML = `<div class="box"><p style="text-align:center;color:#aaa">אין קטגוריות. יש להוסיף קטגוריה בהגדרות כדי להוסיף מוצרים.</p><button class="add-btn" onclick="selectSidebarOption('settings')">עבור להגדרות</button></div>`;
             return;
         }
-        container.innerHTML = `<div class="box"><div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 10px;"><h3 style="margin:0;">הוספת מוצרים</h3><select id="categorySelect" style="width: 100%; max-width: 150px; margin-bottom:0;">${realCats.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div><div id="rowsContainer"></div><button onclick="addNewRow()" style="background:none; border:1px dashed var(--accent); color:var(--accent); width:100%; padding:10px; margin-bottom:15px; border-radius:8px;">+ שורה חדשה</button><button class="add-btn" onclick="saveAllRows()">שמור לרשימה</button></div>`;
+        container.innerHTML = `<div class="box"><h3>הוספת מוצרים</h3><select id="categorySelect">${realCats.map(c => `<option value="${c}">${c}</option>`).join('')}</select><div id="rowsContainer"></div><button onclick="addNewRow()" style="background:none; border:1px dashed var(--accent); color:var(--accent); width:100%; padding:10px; margin-bottom:15px; border-radius:8px;">+ שורה חדשה</button><button class="add-btn" onclick="saveAllRows()">שמור לרשימה</button></div>`;
         addNewRow();
     }
 
     function addNewRow() {
         const rowId = Date.now();
-        const html = `<div style="display:flex; gap:4px; margin-bottom:10px; align-items:center;" id="row_${rowId}"><div style="flex:0 0 27%;"><input type="text" placeholder="מוצר" class="in-p" style="margin-bottom:0"></div><div style="flex:0 0 20%;"><input type="text" placeholder="כמות" class="in-a" style="margin-bottom:0"></div><div style="flex:1;"><input type="text" placeholder="הערה" class="in-n" style="margin-bottom:0"></div><button style="width:30px; background:none; border:none; color:var(--danger);" onclick="document.getElementById('row_${rowId}').remove()">✕</button></div>`;
+        const html = `<div style="display:flex; gap:4px; margin-bottom:10px;" id="row_${rowId}"><input type="text" placeholder="מוצר" class="in-p" style="flex:2;margin-bottom:0"><input type="text" placeholder="כמות" class="in-a" style="flex:1;margin-bottom:0"><input type="text" placeholder="הערה" class="in-n" style="flex:2;margin-bottom:0"><button onclick="document.getElementById('row_${rowId}').remove()" style="background:none;border:none;color:var(--danger)">✕</button></div>`;
         document.getElementById('rowsContainer').insertAdjacentHTML('beforeend', html);
     }
 
@@ -204,7 +222,7 @@
     function updateCategoryUI() {
         const btns = document.getElementById('categoryButtons'); const manage = document.getElementById('manageCatsList');
         btns.innerHTML = `<button onclick="selectSidebarOption('הכל')">הכל</button>`; manage.innerHTML = '';
-        categories.forEach(cat => { if (cat !== 'הכל') { btns.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`; manage.innerHTML += `<li style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-light); padding:10px; border-radius:8px; border-right: 4px solid ${getCategoryColor(cat)};">${cat} <button onclick="removeCategory('${cat}')" style="background:none; border:none; color:var(--danger);">🗑</button></li>`; } });
+        categories.forEach(cat => { if (cat !== 'הכל') { btns.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`; manage.innerHTML += `<li style="border-right-color: ${getCategoryColor(cat)};">${cat} <button onclick="removeCategory('${cat}')" style="background:none; border:none; color:var(--danger);">🗑</button></li>`; } });
     }
 
     function renderList() {
@@ -230,8 +248,8 @@
         try { await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }) }); alert("נשלח!"); }
         catch (e) { alert("שגיאה בשליחה"); }
     }
-    async function sendCurrentListUpdate() { const activeCount = currentItems.filter(i => !i.done).length; if (activeCount === 0) return alert("הרשימה ריקה"); const listName = LIST_ID === MAIN_ID ? "רשימה ראשית" : LIST_ID.replace('list_', ''); const user = localStorage.getItem('myUser') || "בן משפחה"; await sendTelegram(`🔔 <b>תזכורת קניות</b>\n${user} מעדכן שיש פריטים ב<b>${listName}</b>.`); }
-    async function sendGlobalUpdate() { const user = localStorage.getItem('myUser') || "בן משפחה"; await sendTelegram(`🌍 <b>עדכון רשימות</b>\n${user} מזכיר לבדוק את כל רשימות הקניות!`); }
+    async function sendCurrentListUpdate() { const activeCount = currentItems.filter(i => !i.done).length; if (activeCount === 0) return alert("הרשימה ריקה"); const listName = LIST_ID === MAIN_ID ? "רשימה ראשית" : LIST_ID.replace('list_', ''); const user = localStorage.getItem('myUser') || "בן משפחה"; await sendTelegram(`🔔 <b>תזכורת</b>\n${user} מעדכן שיש פריטים ב<b>${listName}</b>.`); }
+    async function sendGlobalUpdate() { const user = localStorage.getItem('myUser') || "בן משפחה"; await sendTelegram(`🌍 <b>תזכורת כללית</b>\n${user} מזכיר לבדוק את כל רשימות הקניות!`); }
 
     function saveAllRows() {
         const cat = document.getElementById('categorySelect').value; const user = localStorage.getItem('myUser') || "אנונימי"; const batch = db.batch(); let added = 0;
@@ -259,7 +277,6 @@
     }
 
     async function removeCategory(cat) { if (confirm(`למחוק ${cat}?`)) await db.collection('lists').doc(LIST_ID).update({ categories: firebase.firestore.FieldValue.arrayRemove(cat) }); }
-    
     function saveSettings() { localStorage.setItem('myUser', document.getElementById('myUser').value); localStorage.setItem('tgToken', document.getElementById('tgToken').value); localStorage.setItem('tgChatId', document.getElementById('tgChatId').value); alert("נשמר!"); }
 
     function initApp() {

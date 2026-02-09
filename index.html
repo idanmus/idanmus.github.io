@@ -3,279 +3,337 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>רשימת קניות</title>
-
+    <title>רשימת קניות משותפת</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
     <style>
-        :root {
-            --bg-dark: #121212;
-            --bg-mid: #1e1e1e;
-            --bg-light: #2a2a2a;
-            --text: #ffffff;
-            --muted: #b0b0b0;
-            --accent: #4caf50;
-            --danger: #f44336;
-        }
+        :root { --bg-dark: #121212; --bg-mid: #1e1e1e; --bg-light: #2a2a2a; --text: #ffffff; --accent: #4caf50; --danger: #f44336; --warning: #607d8b; --highlight: #555; --tg-blue: #2481cc; --tg-slate: #455a64; }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
 
-        body {
-            margin: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-            background: var(--bg-dark);
-            color: var(--text);
-            direction: rtl;
-            overflow-x: hidden;
-        }
+        body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg-dark); color: var(--text); direction: rtl; overflow: hidden; }
+        header { background: var(--bg-mid); padding: 10px 16px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.5); border-bottom: 1px solid #333; }
+        header h1 { margin: 0; font-size: 18px; }
+        #currentListNameDisplay { font-size: 13px; color: var(--accent); font-weight: bold; margin-top: 4px; background: rgba(76, 175, 80, 0.1); display: inline-block; padding: 2px 10px; border-radius: 10px; }
+        header button { position: absolute; right: 16px; top: 18px; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        
+        .container { display: flex; height: calc(100vh - 75px); position: relative; }
+        .sidebar { width: 0; background: var(--bg-mid); border-left: 1px solid #333; overflow-y: auto; transition: 0.3s; flex-shrink: 0; z-index: 1000; }
+        .sidebar.open { width: 260px; }
+        .sidebar button { width: 90%; margin: 6px 5%; padding: 12px; background: var(--bg-light); border: none; border-radius: 10px; color: white; text-align: right; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .sidebar button:active { transform: scale(0.97); }
+        
+        .sidebar-label { color: #777; font-size: 11px; font-weight: bold; margin: 15px 16px 5px 0; text-transform: uppercase; }
 
-        /* מסך התחברות - מופיע ראשון */
-        #auth-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg-dark);
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 900; }
+        .overlay.active { display: block; }
+        
+        main { flex: 1; padding: 15px; overflow-y: auto; }
+        .box { background: var(--bg-mid); padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
+        input, select { background: var(--bg-light); border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; text-align: right; direction: rtl; }
+        
+        .add-btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 14px; cursor: pointer; font-weight: 600; width: 100%; font-size: 16px; }
+        .manage-btn { padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-bottom: 10px; }
+        .btn-edit { background: var(--highlight); } .btn-delete { background: var(--danger); } .btn-cleanup { background: var(--warning); }
+        
+        .btn-tg-now { background: var(--tg-blue) !important; font-weight: 500; }
+        .btn-tg-all { background: var(--tg-slate) !important; font-weight: 500; }
+        
+        ul { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
+        li { background: var(--bg-mid); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; border-right: 5px solid var(--accent); }
+        li.done-item { opacity: 0.3; text-decoration: line-through; border-right-color: #555 !important; }
+        
         .hidden { display: none !important; }
-
-        header {
-            background: var(--bg-mid);
-            padding: 14px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-        }
-
-        header h1 { margin: 0; font-size: 20px; }
-
-        .container { 
-            display: none; /* מוסתר עד להתחברות */
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        main { flex: 1; padding: 15px; }
-
-        .box { background: var(--bg-mid); padding: 16px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-
-        input, select {
-            background: var(--bg-light);
-            border: 1px solid #444;
-            color: white;
-            padding: 14px;
-            border-radius: 8px;
-            width: 100%;
-            box-sizing: border-box;
-            margin-bottom: 12px;
-            font-size: 16px;
-        }
-
-        .add-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 14px;
-            width: 100%;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        ul { list-style: none; padding: 0; margin: 0; }
-
-        li {
-            background: var(--bg-mid);
-            border-radius: 12px;
-            padding: 14px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-right: 5px solid var(--accent);
-        }
-
-        li.done-item { opacity: 0.4; text-decoration: line-through; border-right-color: #9e9e9e; }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            color: var(--danger);
-            font-size: 20px;
-            padding: 5px 10px;
-            cursor: pointer;
-        }
-
-        .logout-link {
-            text-align: center;
-            margin: 20px 0;
-            color: var(--muted);
-            text-decoration: underline;
-            cursor: pointer;
-            font-size: 14px;
-        }
+        hr { border: 0; border-top: 1px solid #444; margin: 15px 0; }
     </style>
 </head>
 <body>
 
-<div id="auth-overlay">
-    <h1 style="font-size: 60px; margin-bottom: 10px;">🛒</h1>
-    <h2 style="margin-bottom: 30px;">רשימת קניות</h2>
-    <button onclick="login()" style="padding: 16px 32px; font-size: 18px; border-radius: 50px; border: none; background: var(--accent); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
-        התחברות עם Google
-    </button>
-</div>
+<div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
 
-<div class="container" id="main-container">
-    <header>
-        <h1>🛒 רשימת קניות</h1>
-    </header>
+<header>
+    <button onclick="toggleSidebar()">☰</button>
+    <h1>רשימת קניות 🛒</h1>
+    <div id="currentListNameDisplay">טוען...</div>
+</header>
+
+<div class="container">
+    <div id="sidebar" class="sidebar">
+        <button style="background: var(--highlight); margin-top: 12px;" onclick="selectSidebarOption('add')">➕ הוספת מוצרים</button>
+        <div id="categoryButtons"></div>
+        <hr style="width: 80%; opacity: 0.2;">
+        <button style="background: var(--warning);" onclick="selectSidebarOption('settings')">⚙️ הגדרות וניהול</button>
+        <div class="sidebar-label">🔔 עדכוני טלגרם</div>
+        <button class="btn-tg-now" onclick="sendCurrentListUpdate()">עדכן על הרשימה הנוכחית</button>
+        <button class="btn-tg-all" onclick="sendGlobalUpdate()">שלח תזכורת לכל הרשימות</button>
+    </div>
 
     <main>
-        <div class="box">
-            <input id="itemInput" placeholder="מה חסר בבית?">
-            <select id="userSelect">
-                <option value="עידן">עידן</option>
-                <option value="עדן">עדן</option>
-            </select>
-            <button class="add-btn" onclick="processAddition()">הוסף לרשימה</button>
+        <div id="addPage" class="hidden">
+            <div id="addContentWrapper">
+                <div class="box">
+                    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 10px;">
+                        <h3 style="margin:0;">הוספת מוצרים</h3>
+                        <select id="categorySelect" style="width: 100%; max-width: 150px; margin-bottom:0; padding: 5px; font-size: 13px;"></select>
+                    </div>
+                    <div id="rowsContainer"></div>
+                    <button onclick="addNewRow()" style="background:none; border:1px dashed var(--accent); color:var(--accent); width:100%; padding:10px; margin-bottom:15px; border-radius:8px; cursor:pointer;">+ שורה חדשה</button>
+                    <button class="add-btn" onclick="saveAllRows()">שמור לרשימה</button>
+                </div>
+            </div>
         </div>
 
-        <ul id="list"></ul>
+        <div id="settingsPage" class="hidden">
+            <div class="box">
+                <h3>📂 ניהול רשימות</h3>
+                <select id="listSelect"></select>
+                <button class="add-btn" style="margin-bottom:15px;" onclick="switchList(document.getElementById('listSelect').value)">🚀 עבור לרשימה</button>
+                <div style="display:flex; gap:5px; margin-bottom:15px;">
+                    <input id="newListInput" placeholder="שם רשימה חדשה" style="margin-bottom:0;">
+                    <button onclick="createNewList()" style="width:70px; background:var(--accent); border:none; color:white; border-radius:8px;">צור</button>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="manage-btn btn-edit" style="flex:1;" onclick="renameCurrentList()">✏️ שנה שם</button>
+                    <button class="manage-btn btn-delete" style="flex:1;" onclick="deleteCurrentList()">❌ מחק רשימה</button>
+                </div>
+                <hr>
+                <h3>🧹 ניהול תוכן</h3>
+                <button class="manage-btn btn-cleanup" onclick="clearAllItemsOnly()">🧺 מחק את כל הפריטים</button>
+                <button class="manage-btn btn-cleanup" style="background:#455a64;" onclick="fullResetList()">🔄 איפוס מלא (כולל קטגוריות)</button>
+                <hr>
+                <h3>🏷️ ניהול קטגוריות</h3>
+                <div style="display:flex; gap:5px;">
+                    <input id="newCatInput" placeholder="קטגוריה חדשה" style="margin-bottom:0;">
+                    <button onclick="addCategory()" style="width:60px; background:var(--accent); border:none; color:white; border-radius:8px;">+</button>
+                </div>
+                <ul id="manageCatsList" style="margin-top:15px;"></ul>
+                <hr>
+                <h3>👤 הגדרות בוט טלגרם</h3>
+                <input id="tgToken" placeholder="Telegram Bot Token">
+                <input id="tgChatId" placeholder="Telegram Chat ID">
+                <input id="myUser" placeholder="השם שלך (יופיע בעדכונים)">
+                <button class="add-btn" onclick="saveSettings()">שמור הגדרות</button>
+            </div>
+        </div>
 
-        <div class="logout-link" onclick="logout()">יציאה מהחשבון</div>
+        <div id="listPage">
+            <div id="categoryTitle" style="font-weight:bold; color:var(--accent); margin-bottom:10px;">מציג: הכל</div>
+            <ul id="list"></ul>
+        </div>
     </main>
 </div>
 
 <script>
-// הגדרות פרויקט Firebase שלך
-const firebaseConfig = {
-    apiKey: "AIzaSyCBKTDiDa7xnWgEOhPFeReLQDJgr9d4g8E",
-    authDomain: "shopping-list-cf3fd.firebaseapp.com",
-    projectId: "shopping-list-cf3fd"
-};
+    const firebaseConfig = { apiKey: "AIzaSyCBKTDiDa7xnWgEOhPFeReLQDJgr9d4g8E", authDomain: "shopping-list-cf3fd.firebaseapp.com", projectId: "shopping-list-cf3fd" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-// אתחול
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-const provider = new firebase.auth.GoogleAuthProvider();
+    const MAIN_ID = "family_shared_list_v1";
+    let LIST_ID = localStorage.getItem('currentListID') || MAIN_ID;
+    let categories = []; let currentItems = []; let allListsNames = []; let currentView = 'הכל';
+    let unsubscribeCats = null; let unsubscribeItems = null;
 
-const LIST_ID = "family_shared_list_v1";
-let currentItems = [];
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); }
 
-// פונקציות אימות
-function login() { 
-    auth.signInWithPopup(provider).catch(err => alert("שגיאה: " + err.message)); 
-}
-
-function logout() { 
-    auth.signOut().then(() => location.reload()); 
-}
-
-// ניהול מצב משתמש
-auth.onAuthStateChanged(user => {
-    const authOverlay = document.getElementById('auth-overlay');
-    const container = document.getElementById('main-container');
-
-    if (user) {
-        const email = user.email.toLowerCase();
-        // בדיקת הרשאה
-        if (email === "idanmus@gmail.com" || email === "edenrefaelov98@gmail.com") {
-            authOverlay.classList.add('hidden');
-            container.style.display = 'flex';
-            
-            // הגדרת ברירת מחדל לשם המשתמש לפי המייל
-            document.getElementById('userSelect').value = (email === "idanmus@gmail.com") ? "עידן" : "עדן";
-            
-            // טעינת הנתונים רק אחרי שיש אישור כניסה
-            loadList();
+    function selectSidebarOption(option) {
+        document.getElementById('addPage').classList.add('hidden');
+        document.getElementById('settingsPage').classList.add('hidden');
+        document.getElementById('listPage').classList.add('hidden');
+        if (option === 'add') {
+            document.getElementById('addPage').classList.remove('hidden');
+            if (categories.filter(c => c !== 'הכל').length > 0) {
+                if(document.getElementById('rowsContainer').children.length === 0) addNewRow();
+            }
+        } else if (option === 'settings') {
+            document.getElementById('settingsPage').classList.remove('hidden');
         } else {
-            alert("גישה נדחתה למייל: " + email);
-            auth.signOut();
+            document.getElementById('listPage').classList.remove('hidden');
+            document.getElementById('categoryTitle').textContent = `מציג: ${option}`;
+            currentView = option;
+            renderList();
         }
-    } else {
-        authOverlay.classList.remove('hidden');
-        container.style.display = 'none';
-    }
-});
-
-// טעינת הרשימה מפיירבייס
-function loadList() {
-    db.collection("lists").doc(LIST_ID).collection("items").orderBy("createdAt", "desc")
-      .onSnapshot(snap => {
-          currentItems = snap.docs.map(d => ({id: d.id, ...d.data()}));
-          renderList();
-      }, err => {
-          console.error("שגיאת Firestore:", err);
-      });
-}
-
-// הצגת הרשימה על המסך
-function renderList() {
-    const listEl = document.getElementById('list');
-    if (currentItems.length === 0) {
-        listEl.innerHTML = `<p style="text-align:center; color:var(--muted); margin-top:20px;">הרשימה ריקה</p>`;
-        return;
+        if (document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
     }
 
-    listEl.innerHTML = currentItems.map(item => `
-        <li class="${item.done ? 'done-item' : ''}" onclick="toggleDone('${item.id}', ${item.done})">
-            <div>
-                <strong>${item.text}</strong><br>
-                <small style="color:var(--muted)">הוסיף/ה: ${item.user}</small>
-            </div>
-            <button class="delete-btn" onclick="event.stopPropagation(); deleteItem('${item.id}')">🗑</button>
-        </li>
-    `).join('');
-}
+    function addNewRow() {
+        const rowId = Date.now();
+        const html = `<div style="display:flex; gap:4px; margin-bottom:10px; align-items:center; width:100%;" id="row_${rowId}"><div style="flex:0 0 27%;"><input type="text" placeholder="מוצר" class="in-p" style="margin-bottom:0"></div><div style="flex:0 0 20%;"><input type="text" placeholder="כמות" class="in-a" style="margin-bottom:0"></div><div style="flex:1;"><input type="text" placeholder="הערה" class="in-n" style="margin-bottom:0"></div><button style="width:30px; background:none; border:none; color:var(--danger); font-size:18px;" onclick="document.getElementById('row_${rowId}').remove()">✕</button></div>`;
+        document.getElementById('rowsContainer').insertAdjacentHTML('beforeend', html);
+    }
 
-// הוספת פריט חדש
-async function processAddition() {
-    const input = document.getElementById('itemInput');
-    const text = input.value.trim();
-    const user = document.getElementById('userSelect').value;
-
-    if(!text) return;
-
-    try {
-        await db.collection("lists").doc(LIST_ID).collection("items").add({
-            text: text, 
-            user: user,
-            done: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    function initApp() {
+        db.collection('meta').doc('all_lists').onSnapshot(doc => {
+            allListsNames = doc.exists ? (doc.data().names || []) : [MAIN_ID];
+            if (!allListsNames.includes(MAIN_ID)) allListsNames.unshift(MAIN_ID);
+            updateListSelectUI();
         });
-        input.value = ''; // ניקוי השדה
-    } catch (e) {
-        alert("שגיאה בהוספה: " + e.message);
+        loadList(LIST_ID);
+        document.getElementById('myUser').value = localStorage.getItem('myUser') || '';
+        document.getElementById('tgToken').value = localStorage.getItem('tgToken') || '';
+        document.getElementById('tgChatId').value = localStorage.getItem('tgChatId') || '';
     }
-}
 
-// סימון כבוצע
-function toggleDone(id, status) { 
-    db.collection("lists").doc(LIST_ID).collection("items").doc(id).update({done: !status}); 
-}
-
-// מחיקת פריט
-function deleteItem(id) { 
-    if(confirm("למחוק את הפריט?")) {
-        db.collection("lists").doc(LIST_ID).collection("items").doc(id).delete();
+    function loadList(id) {
+        if (unsubscribeCats) unsubscribeCats(); if (unsubscribeItems) unsubscribeItems();
+        LIST_ID = id; localStorage.setItem('currentListID', id);
+        const displayId = id === MAIN_ID ? "רשימה ראשית" : id.replace('list_', '');
+        document.getElementById('currentListNameDisplay').textContent = displayId;
+        unsubscribeCats = db.collection('lists').doc(LIST_ID).onSnapshot(doc => {
+            categories = (doc.exists && doc.data().categories) ? doc.data().categories : ['הכל'];
+            updateCategoryUI();
+        });
+        unsubscribeItems = db.collection("lists").doc(LIST_ID).collection("items").orderBy("createdAt", "desc").onSnapshot(snap => {
+            currentItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderList();
+        });
     }
-}
+
+    function updateCategoryUI() {
+        const btns = document.getElementById('categoryButtons'); const sel = document.getElementById('categorySelect'); const manage = document.getElementById('manageCatsList');
+        btns.innerHTML = `<button onclick="selectSidebarOption('הכל')">הכל</button>`; sel.innerHTML = ''; manage.innerHTML = '';
+        categories.forEach(cat => {
+            if (cat !== 'הכל') {
+                btns.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`;
+                sel.innerHTML += `<option value="${cat}">${cat}</option>`;
+                manage.innerHTML += `<li style="background:var(--bg-mid); border-radius:12px; padding:14px; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">${cat} <button onclick="removeCategory('${cat}')" style="background:none; border:none; color:var(--danger); font-weight:bold; cursor:pointer;">🗑</button></li>`;
+            }
+        });
+    }
+
+    function renderList() {
+        const listEl = document.getElementById('list'); listEl.innerHTML = '';
+        currentItems.filter(i => currentView === 'הכל' || i.category === currentView).sort((a,b) => a.done - b.done).forEach(item => {
+            const li = document.createElement('li'); li.className = item.done ? 'done-item' : '';
+            li.onclick = () => db.collection("lists").doc(LIST_ID).collection("items").doc(item.id).update({ done: !item.done });
+            li.innerHTML = `<div><strong>${item.text}</strong> ${item.amount ? `<small>(${item.amount})</small>` : ''}<br><small style="color:#aaa">${item.user} ${item.note ? `| ${item.note}` : ''}</small></div><button onclick="event.stopPropagation(); if(confirm('למחוק?')) db.collection('lists').doc(LIST_ID).collection('items').doc('${item.id}').delete()" style="background:none; border:none; color:var(--danger); font-size:20px;">🗑</button>`;
+            listEl.appendChild(li);
+        });
+    }
+
+    async function sendTelegram(msg) {
+        const token = localStorage.getItem('tgToken'); 
+        const chatId = localStorage.getItem('tgChatId');
+        if (!token || !chatId || token.trim() === "" || chatId.trim() === "") {
+            return alert("כדי לשלוח עדכונים לטלגרם, יש להזין Token ו-Chat ID בדף ההגדרות.");
+        }
+        try {
+            const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }) 
+            });
+            if (!res.ok) throw new Error("Telegram API Error");
+            alert("הודעה נשלחה בהצלחה!");
+        } catch (e) { 
+            alert("שגיאה בשליחת ההודעה. וודא שפרטי הטלגרם נכונים והבוט הופעל.");
+            console.error(e); 
+        }
+    }
+
+    async function sendCurrentListUpdate() {
+        const activeItems = currentItems.filter(i => !i.done).length;
+        if (activeItems === 0) return alert("הרשימה ריקה מפריטים לקנייה.");
+        const listName = LIST_ID === MAIN_ID ? "רשימה ראשית" : LIST_ID.replace('list_', '');
+        const user = localStorage.getItem('myUser') || "מישהו מהמשפחה";
+        const msg = `🔔 <b>תזכורת קניות</b>\n\n${user} שלח/ה תזכורת שיש פריטים שמחכים ב<b>${listName}</b>.`;
+        await sendTelegram(msg);
+    }
+
+    async function sendGlobalUpdate() {
+        let listsWithItems = [];
+        for (let name of allListsNames) {
+            const snap = await db.collection('lists').doc(name).collection('items').where('done', '==', false).limit(1).get();
+            if (!snap.empty) listsWithItems.push(name === MAIN_ID ? "רשימה ראשית" : name.replace('list_', ''));
+        }
+        if (listsWithItems.length === 0) return alert("אין פריטים פתוחים באף רשימה.");
+        const user = localStorage.getItem('myUser') || "מישהו מהמשפחה";
+        const msg = `🌍 <b>סטטוס רשימות משפחתי</b>\n\n${user} מעדכן/ה שיש פריטים שמחכים ב:\n• ${listsWithItems.join('\n• ')}`;
+        await sendGlobalTelegram(msg); 
+    }
+
+    // פונקציית עזר למנוע כפילות אלרטים בעדכון גלובלי
+    async function sendGlobalTelegram(msg) {
+        const token = localStorage.getItem('tgToken'); 
+        const chatId = localStorage.getItem('tgChatId');
+        if (!token || !chatId || token.trim() === "" || chatId.trim() === "") return alert("יש להזין פרטי טלגרם בהגדרות.");
+        await sendTelegram(msg);
+    }
+
+    function saveAllRows() {
+        const cat = document.getElementById('categorySelect').value; if (!cat) return;
+        const user = localStorage.getItem('myUser') || "אנונימי";
+        const batch = db.batch(); let added = 0;
+        Array.from(document.getElementById('rowsContainer').children).forEach(row => {
+            const p = row.querySelector('.in-p').value.trim();
+            if (p) {
+                const doc = db.collection("lists").doc(LIST_ID).collection("items").doc();
+                batch.set(doc, { text: p, amount: row.querySelector('.in-a').value.trim(), note: row.querySelector('.in-n').value.trim(), category: cat, user, done: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                added++;
+            }
+        });
+        if (added > 0) batch.commit().then(() => { document.getElementById('rowsContainer').innerHTML = ''; addNewRow(); alert("נשמר!"); });
+    }
+
+    function updateListSelectUI() {
+        const select = document.getElementById('listSelect'); if (select) {
+            select.innerHTML = '';
+            allListsNames.forEach(name => {
+                const opt = document.createElement('option'); opt.value = name;
+                opt.textContent = name === MAIN_ID ? "רשימה ראשית" : name.replace('list_', '');
+                if (name === LIST_ID) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    function switchList(id) { loadList(id); }
+    async function createNewList() {
+        const name = document.getElementById('newListInput').value.trim(); if (name) {
+            const newID = "list_" + name;
+            await db.collection('meta').doc('all_lists').set({ names: firebase.firestore.FieldValue.arrayUnion(newID) }, {merge: true});
+            document.getElementById('newListInput').value = ''; loadList(newID);
+        }
+    }
+    async function renameCurrentList() {
+        const oldID = LIST_ID; if (oldID === MAIN_ID) return alert("לא ניתן לשנות שם לרשימה ראשית");
+        const newName = prompt("שם חדש:"); if (!newName) return;
+        const newID = "list_" + newName;
+        await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayRemove(oldID) });
+        await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayUnion(newID) });
+        loadList(newID);
+    }
+    async function deleteCurrentList() {
+        if (LIST_ID === MAIN_ID || allListsNames.length <= 1) return alert("לא ניתן למחוק");
+        if (confirm("למחוק את כל הרשימה?")) {
+            await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayRemove(LIST_ID) });
+            loadList(MAIN_ID);
+        }
+    }
+    async function clearAllItemsOnly() { if (confirm("למחוק הכל?")) { const batch = db.batch(); currentItems.forEach(i => batch.delete(db.collection("lists").doc(LIST_ID).collection("items").doc(i.id))); await batch.commit(); } }
+    async function fullResetList() { if (confirm("איפוס מלא (כולל קטגוריות)?")) { await clearAllItemsOnly(); await db.collection('lists').doc(LIST_ID).update({ categories: ['הכל'] }); } }
+    async function addCategory() {
+        const n = document.getElementById('newCatInput').value.trim(); if (n) {
+            await db.collection('lists').doc(LIST_ID).set({ categories: firebase.firestore.FieldValue.arrayUnion(n) }, {merge: true});
+            document.getElementById('newCatInput').value = '';
+        }
+    }
+    async function removeCategory(cat) { 
+        if (confirm(`מחיקת קטגוריית "${cat}"?`)) {
+            await db.collection('lists').doc(LIST_ID).update({ categories: firebase.firestore.FieldValue.arrayRemove(cat) });
+            const snap = await db.collection("lists").doc(LIST_ID).collection("items").where('category', '==', cat).get();
+            const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit();
+        } 
+    }
+    function saveSettings() {
+        localStorage.setItem('myUser', document.getElementById('myUser').value);
+        localStorage.setItem('tgToken', document.getElementById('tgToken').value);
+        localStorage.setItem('tgChatId', document.getElementById('tgChatId').value);
+        alert("הגדרות נשמרו!");
+    }
+
+    initApp();
 </script>
-
 </body>
 </html>

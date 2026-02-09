@@ -8,17 +8,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="רשימת קניות">
-    <meta name="mobile-web-app-capable" content="yes">
     
     <link rel="apple-touch-icon" href="IMG_0026.png">
     <link rel="icon" type="image/png" href="IMG_0026.png">
-    <link rel="apple-touch-icon-precomposed" href="IMG_0026.png">
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     
     <style>
-        :root { --bg-dark: #121212; --bg-mid: #1e1e1e; --bg-light: #2a2a2a; --text: #ffffff; --accent: #4caf50; --danger: #f44336; --warning: #607d8b; --highlight: #555; --tg-blue: #2481cc; --tg-slate: #455a64; }
+        :root { --bg-dark: #121212; --bg-mid: #1e1e1e; --bg-light: #2a2a2a; --text: #ffffff; --accent: #4caf50; --danger: #f44336; --warning: #607d8b; --highlight: #555; --tg-blue: #2481cc; --tg-slate: #455a64; --note-yellow: #fff9c4; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: var(--bg-dark); }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
@@ -42,8 +40,13 @@
         .btn-tg-now { background: var(--tg-blue) !important; font-weight: 500; }
         .btn-tg-all { background: var(--tg-slate) !important; font-weight: 500; }
         ul { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
-        li { background: var(--bg-mid); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; border-right: 5px solid var(--accent); }
+        li { background: var(--bg-mid); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; border-right: 5px solid var(--accent); position: relative; }
         li.done-item { opacity: 0.3; text-decoration: line-through; border-right-color: #555 !important; }
+        .item-info { flex: 1; }
+        .cat-tag { font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 8px; vertical-align: middle; color: #ccc; }
+        .item-note { color: var(--note-yellow); font-size: 13px; opacity: 0.9; }
+        .group-header { font-size: 14px; font-weight: bold; color: var(--accent); margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .no-cats-msg { text-align: center; padding: 20px; color: #aaa; }
         .hidden { display: none !important; }
         hr { border: 0; border-top: 1px solid #444; margin: 15px 0; }
     </style>
@@ -71,15 +74,7 @@
 
     <main>
         <div id="addPage" class="hidden">
-            <div class="box">
-                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 10px;">
-                    <h3 style="margin:0;">הוספת מוצרים</h3>
-                    <select id="categorySelect" style="width: 100%; max-width: 150px; margin-bottom:0; padding: 5px; font-size: 13px;"></select>
-                </div>
-                <div id="rowsContainer"></div>
-                <button onclick="addNewRow()" style="background:none; border:1px dashed var(--accent); color:var(--accent); width:100%; padding:10px; margin-bottom:15px; border-radius:8px; cursor:pointer;">+ שורה חדשה</button>
-                <button class="add-btn" onclick="saveAllRows()">שמור לרשימה</button>
-            </div>
+            <div id="addContentContainer"></div>
         </div>
 
         <div id="settingsPage" class="hidden">
@@ -110,14 +105,14 @@
                 <h3>👤 הגדרות בוט טלגרם</h3>
                 <input id="tgToken" placeholder="Telegram Bot Token">
                 <input id="tgChatId" placeholder="Telegram Chat ID">
-                <input id="myUser" placeholder="השם שלך (יופיע בעדכונים)">
+                <input id="myUser" placeholder="השם שלך">
                 <button class="add-btn" onclick="saveSettings()">שמור הגדרות</button>
             </div>
         </div>
 
         <div id="listPage">
             <div id="categoryTitle" style="font-weight:bold; color:var(--accent); margin-bottom:10px;">מציג: הכל</div>
-            <ul id="list"></ul>
+            <div id="listContainer"></div>
         </div>
     </main>
 </div>
@@ -132,176 +127,117 @@
     let categories = []; let currentItems = []; let allListsNames = []; let currentView = 'הכל';
     let unsubscribeCats = null; let unsubscribeItems = null;
 
+    function getCategoryColor(str) {
+        if (!str || str === 'הכל') return '#4caf50';
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        return `hsl(${Math.abs(hash) % 360}, 65%, 50%)`;
+    }
+
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); }
 
     function selectSidebarOption(option) {
         document.getElementById('addPage').classList.add('hidden');
         document.getElementById('settingsPage').classList.add('hidden');
         document.getElementById('listPage').classList.add('hidden');
-        if (option === 'add') {
-            document.getElementById('addPage').classList.remove('hidden');
-            if(document.getElementById('rowsContainer').children.length === 0) addNewRow();
-        } else if (option === 'settings') {
-            document.getElementById('settingsPage').classList.remove('hidden');
-        } else {
-            document.getElementById('listPage').classList.remove('hidden');
-            document.getElementById('categoryTitle').textContent = `מציג: ${option}`;
-            currentView = option;
-            renderList();
-        }
+        if (option === 'add') { document.getElementById('addPage').classList.remove('hidden'); renderAddPage(); }
+        else if (option === 'settings') { document.getElementById('settingsPage').classList.remove('hidden'); }
+        else { document.getElementById('listPage').classList.remove('hidden'); document.getElementById('categoryTitle').textContent = `מציג: ${option}`; currentView = option; renderList(); }
         if (document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
+    }
+
+    function renderAddPage() {
+        const container = document.getElementById('addContentContainer');
+        const realCats = categories.filter(c => c !== 'הכל');
+        if (realCats.length === 0) {
+            container.innerHTML = `<div class="box no-cats-msg"><p>לא ניתן להוסיף מוצרים ללא קטגוריות.</p><button class="add-btn" onclick="selectSidebarOption('settings')">עבור להגדרות</button></div>`;
+            return;
+        }
+        container.innerHTML = `<div class="box"><div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 10px;"><h3 style="margin:0;">הוספת מוצרים</h3><select id="categorySelect" style="width: 100%; max-width: 150px; margin-bottom:0;">${realCats.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div><div id="rowsContainer"></div><button onclick="addNewRow()" style="background:none; border:1px dashed var(--accent); color:var(--accent); width:100%; padding:10px; margin-bottom:15px; border-radius:8px;">+ שורה חדשה</button><button class="add-btn" onclick="saveAllRows()">שמור לרשימה</button></div>`;
+        addNewRow();
     }
 
     function addNewRow() {
         const rowId = Date.now();
-        const html = `<div style="display:flex; gap:4px; margin-bottom:10px; align-items:center; width:100%;" id="row_${rowId}"><div style="flex:0 0 27%;"><input type="text" placeholder="מוצר" class="in-p" style="margin-bottom:0"></div><div style="flex:0 0 20%;"><input type="text" placeholder="כמות" class="in-a" style="margin-bottom:0"></div><div style="flex:1;"><input type="text" placeholder="הערה" class="in-n" style="margin-bottom:0"></div><button style="width:30px; background:none; border:none; color:var(--danger); font-size:18px;" onclick="document.getElementById('row_${rowId}').remove()">✕</button></div>`;
+        const html = `<div style="display:flex; gap:4px; margin-bottom:10px; align-items:center;" id="row_${rowId}"><div style="flex:0 0 27%;"><input type="text" placeholder="מוצר" class="in-p" style="margin-bottom:0"></div><div style="flex:0 0 20%;"><input type="text" placeholder="כמות" class="in-a" style="margin-bottom:0"></div><div style="flex:1;"><input type="text" placeholder="הערה" class="in-n" style="margin-bottom:0"></div><button style="width:30px; background:none; border:none; color:var(--danger);" onclick="document.getElementById('row_${rowId}').remove()">✕</button></div>`;
         document.getElementById('rowsContainer').insertAdjacentHTML('beforeend', html);
-    }
-
-    function initApp() {
-        db.collection('meta').doc('all_lists').onSnapshot(doc => {
-            allListsNames = doc.exists ? (doc.data().names || []) : [MAIN_ID];
-            if (!allListsNames.includes(MAIN_ID)) allListsNames.unshift(MAIN_ID);
-            updateListSelectUI();
-        });
-        loadList(LIST_ID);
-        document.getElementById('myUser').value = localStorage.getItem('myUser') || '';
-        document.getElementById('tgToken').value = localStorage.getItem('tgToken') || '';
-        document.getElementById('tgChatId').value = localStorage.getItem('tgChatId') || '';
     }
 
     function loadList(id) {
         if (unsubscribeCats) unsubscribeCats(); if (unsubscribeItems) unsubscribeItems();
         LIST_ID = id; localStorage.setItem('currentListID', id);
-        const displayId = id === MAIN_ID ? "רשימה ראשית" : id.replace('list_', '');
-        document.getElementById('currentListNameDisplay').textContent = displayId;
-        unsubscribeCats = db.collection('lists').doc(LIST_ID).onSnapshot(doc => {
-            categories = (doc.exists && doc.data().categories) ? doc.data().categories : ['הכל'];
-            updateCategoryUI();
-        });
-        unsubscribeItems = db.collection("lists").doc(LIST_ID).collection("items").orderBy("createdAt", "desc").onSnapshot(snap => {
-            currentItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderList();
-        });
+        document.getElementById('currentListNameDisplay').textContent = id === MAIN_ID ? "רשימה ראשית" : id.replace('list_', '');
+        unsubscribeCats = db.collection('lists').doc(LIST_ID).onSnapshot(doc => { categories = (doc.exists && doc.data().categories) ? doc.data().categories : ['הכל']; updateCategoryUI(); });
+        unsubscribeItems = db.collection("lists").doc(LIST_ID).collection("items").orderBy("createdAt", "desc").onSnapshot(snap => { currentItems = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderList(); });
     }
 
     function updateCategoryUI() {
-        const btns = document.getElementById('categoryButtons'); const sel = document.getElementById('categorySelect'); const manage = document.getElementById('manageCatsList');
-        btns.innerHTML = `<button onclick="selectSidebarOption('הכל')">הכל</button>`; sel.innerHTML = ''; manage.innerHTML = '';
-        categories.forEach(cat => {
-            if (cat !== 'הכל') {
-                btns.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`;
-                sel.innerHTML += `<option value="${cat}">${cat}</option>`;
-                manage.innerHTML += `<li style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-light); padding:10px; border-radius:8px; margin-bottom:5px;">${cat} <button onclick="removeCategory('${cat}')" style="background:none; border:none; color:var(--danger);">🗑</button></li>`;
-            }
-        });
+        const btns = document.getElementById('categoryButtons'); const manage = document.getElementById('manageCatsList');
+        btns.innerHTML = `<button onclick="selectSidebarOption('הכל')">הכל</button>`; manage.innerHTML = '';
+        categories.forEach(cat => { if (cat !== 'הכל') { btns.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`; manage.innerHTML += `<li style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-light); padding:10px; border-radius:8px; border-right: 4px solid ${getCategoryColor(cat)};">${cat} <button onclick="removeCategory('${cat}')" style="background:none; border:none; color:var(--danger);">🗑</button></li>`; } });
     }
 
     function renderList() {
-        const listEl = document.getElementById('list'); listEl.innerHTML = '';
-        currentItems.filter(i => currentView === 'הכל' || i.category === currentView).sort((a,b) => a.done - b.done).forEach(item => {
-            const li = document.createElement('li'); li.className = item.done ? 'done-item' : '';
-            li.onclick = () => db.collection("lists").doc(LIST_ID).collection("items").doc(item.id).update({ done: !item.done });
-            li.innerHTML = `<div><strong>${item.text}</strong> ${item.amount ? `<small>(${item.amount})</small>` : ''}<br><small style="color:#aaa">${item.user} ${item.note ? `| ${item.note}` : ''}</small></div><button onclick="event.stopPropagation(); if(confirm('למחוק?')) db.collection('lists').doc(LIST_ID).collection('items').doc('${item.id}').delete()" style="background:none; border:none; color:var(--danger); font-size:20px;">🗑</button>`;
-            listEl.appendChild(li);
+        const container = document.getElementById('listContainer'); container.innerHTML = '';
+        let filtered = currentItems.filter(i => currentView === 'הכל' || i.category === currentView);
+        const grouped = filtered.reduce((acc, item) => { const cat = item.category || 'ללא קטגוריה'; if (!acc[cat]) acc[cat] = []; acc[cat].push(item); return acc; }, {});
+        Object.keys(grouped).sort().forEach(catName => {
+            if (currentView === 'הכל') { const h = document.createElement('div'); h.className = 'group-header'; h.style.color = getCategoryColor(catName); h.textContent = catName; container.appendChild(h); }
+            const ul = document.createElement('ul');
+            grouped[catName].sort((a,b) => a.done - b.done).forEach(item => {
+                const li = document.createElement('li'); li.className = item.done ? 'done-item' : ''; li.style.borderRightColor = getCategoryColor(catName);
+                li.onclick = () => db.collection("lists").doc(LIST_ID).collection("items").doc(item.id).update({ done: !item.done });
+                li.innerHTML = `<div class="item-info"><strong>${item.text}</strong> ${item.amount ? `<small>(${item.amount})</small>` : ''} ${currentView === 'הכל' ? `<span class="cat-tag">${catName}</span>` : ''}<br><small style="color:#aaa">${item.user}</small> ${item.note ? `<span class="item-note"> | ${item.note}</span>` : ''}</div><button onclick="event.stopPropagation(); if(confirm('למחוק?')) db.collection('lists').doc(LIST_ID).collection('items').doc('${item.id}').delete()" style="background:none; border:none; color:var(--danger); font-size:20px;">🗑</button>`;
+                ul.appendChild(li);
+            });
+            container.appendChild(ul);
         });
     }
 
     async function sendTelegram(msg) {
         const token = localStorage.getItem('tgToken'); const chatId = localStorage.getItem('tgChatId');
         if (!token || !chatId) return alert("הזן פרטי טלגרם בהגדרות");
-        try {
-            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { 
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }) 
-            });
-            alert("נשלח!");
-        } catch (e) { alert("שגיאה בשליחה"); }
+        try { await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }) }); alert("נשלח!"); }
+        catch (e) { alert("שגיאה בשליחה"); }
     }
-
-    async function sendCurrentListUpdate() {
-        const activeCount = currentItems.filter(i => !i.done).length;
-        if (activeCount === 0) return alert("הרשימה ריקה");
-        const listName = LIST_ID === MAIN_ID ? "רשימה ראשית" : LIST_ID.replace('list_', '');
-        const user = localStorage.getItem('myUser') || "בן משפחה";
-        await sendTelegram(`🔔 <b>תזכורת קניות</b>\n${user} מעדכן שיש פריטים ב<b>${listName}</b>.`);
-    }
-
-    async function sendGlobalUpdate() {
-        const user = localStorage.getItem('myUser') || "בן משפחה";
-        await sendTelegram(`🌍 <b>עדכון רשימות</b>\n${user} מזכיר לבדוק את כל רשימות הקניות!`);
-    }
+    async function sendCurrentListUpdate() { const activeCount = currentItems.filter(i => !i.done).length; if (activeCount === 0) return alert("הרשימה ריקה"); const listName = LIST_ID === MAIN_ID ? "רשימה ראשית" : LIST_ID.replace('list_', ''); const user = localStorage.getItem('myUser') || "בן משפחה"; await sendTelegram(`🔔 <b>תזכורת קניות</b>\n${user} מעדכן שיש פריטים ב<b>${listName}</b>.`); }
+    async function sendGlobalUpdate() { const user = localStorage.getItem('myUser') || "בן משפחה"; await sendTelegram(`🌍 <b>עדכון רשימות</b>\n${user} מזכיר לבדוק את כל רשימות הקניות!`); }
 
     function saveAllRows() {
-        const cat = document.getElementById('categorySelect').value; if (!cat) return;
-        const user = localStorage.getItem('myUser') || "אנונימי";
-        const batch = db.batch(); let added = 0;
+        const cat = document.getElementById('categorySelect').value; const user = localStorage.getItem('myUser') || "אנונימי"; const batch = db.batch(); let added = 0;
         Array.from(document.getElementById('rowsContainer').children).forEach(row => {
             const p = row.querySelector('.in-p').value.trim();
-            if (p) {
-                const doc = db.collection("lists").doc(LIST_ID).collection("items").doc();
-                batch.set(doc, { text: p, amount: row.querySelector('.in-a').value.trim(), note: row.querySelector('.in-n').value.trim(), category: cat, user, done: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-                added++;
-            }
+            if (p) { const doc = db.collection("lists").doc(LIST_ID).collection("items").doc(); batch.set(doc, { text: p, amount: row.querySelector('.in-a').value.trim(), note: row.querySelector('.in-n').value.trim(), category: cat, user, done: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); added++; }
         });
-        if (added > 0) batch.commit().then(() => { document.getElementById('rowsContainer').innerHTML = ''; addNewRow(); alert("נשמר!"); });
+        if (added > 0) batch.commit().then(() => { renderAddPage(); alert("נשמר!"); });
     }
 
-    function updateListSelectUI() {
-        const select = document.getElementById('listSelect'); if (select) {
-            select.innerHTML = '';
-            allListsNames.forEach(name => {
-                const opt = document.createElement('option'); opt.value = name;
-                opt.textContent = name === MAIN_ID ? "רשימה ראשית" : name.replace('list_', '');
-                if (name === LIST_ID) opt.selected = true;
-                select.appendChild(opt);
-            });
-        }
-    }
-
-    function switchList(id) { loadList(id); }
-    async function createNewList() {
-        const name = document.getElementById('newListInput').value.trim(); if (name) {
-            const newID = "list_" + name;
-            await db.collection('meta').doc('all_lists').set({ names: firebase.firestore.FieldValue.arrayUnion(newID) }, {merge: true});
-            document.getElementById('newListInput').value = ''; loadList(newID);
-        }
-    }
-    async function renameCurrentList() {
-        const oldID = LIST_ID; if (oldID === MAIN_ID) return alert("לא ניתן לשנות שם לרשימה ראשית");
-        const newName = prompt("שם חדש:"); if (!newName) return;
-        const newID = "list_" + newName;
-        await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayRemove(oldID) });
-        await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayUnion(newID) });
-        loadList(newID);
-    }
-    async function deleteCurrentList() {
-        if (LIST_ID === MAIN_ID) return alert("לא ניתן למחוק ראשית");
-        if (confirm("למחוק?")) {
-            await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayRemove(LIST_ID) });
-            loadList(MAIN_ID);
-        }
-    }
+    async function createNewList() { const name = document.getElementById('newListInput').value.trim(); if (name) { const newID = "list_" + name; await db.collection('meta').doc('all_lists').set({ names: firebase.firestore.FieldValue.arrayUnion(newID) }, {merge: true}); document.getElementById('newListInput').value = ''; loadList(newID); } }
+    async function renameCurrentList() { const oldID = LIST_ID; if (oldID === MAIN_ID) return alert("לא ניתן לשנות שם לרשימה ראשית"); const newName = prompt("שם חדש:"); if (!newName) return; const newID = "list_" + newName; await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayRemove(oldID) }); await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayUnion(newID) }); loadList(newID); }
+    async function deleteCurrentList() { if (LIST_ID === MAIN_ID) return alert("לא ניתן למחוק ראשית"); if (confirm("למחוק?")) { await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayRemove(LIST_ID) }); loadList(MAIN_ID); } }
     async function clearAllItemsOnly() { if (confirm("למחוק הכל?")) { const batch = db.batch(); currentItems.forEach(i => batch.delete(db.collection("lists").doc(LIST_ID).collection("items").doc(i.id))); await batch.commit(); } }
     async function fullResetList() { if (confirm("איפוס מלא?")) { await clearAllItemsOnly(); await db.collection('lists').doc(LIST_ID).update({ categories: ['הכל'] }); } }
-    async function addCategory() {
-        const n = document.getElementById('newCatInput').value.trim(); if (n) {
-            await db.collection('lists').doc(LIST_ID).set({ categories: firebase.firestore.FieldValue.arrayUnion(n) }, {merge: true});
-            document.getElementById('newCatInput').value = '';
-        }
-    }
-    async function removeCategory(cat) { 
-        if (confirm(`למחוק ${cat}?`)) {
-            await db.collection('lists').doc(LIST_ID).update({ categories: firebase.firestore.FieldValue.arrayRemove(cat) });
-        } 
-    }
-    function saveSettings() {
-        localStorage.setItem('myUser', document.getElementById('myUser').value);
-        localStorage.setItem('tgToken', document.getElementById('tgToken').value);
-        localStorage.setItem('tgChatId', document.getElementById('tgChatId').value);
-        alert("נשמר!");
-    }
+    async function addCategory() { const n = document.getElementById('newCatInput').value.trim(); if (n) { await db.collection('lists').doc(LIST_ID).set({ categories: firebase.firestore.FieldValue.arrayUnion(n) }, {merge: true}); document.getElementById('newCatInput').value = ''; } }
+    async function removeCategory(cat) { if (confirm(`למחוק ${cat}?`)) await db.collection('lists').doc(LIST_ID).update({ categories: firebase.firestore.FieldValue.arrayRemove(cat) }); }
+    
+    function saveSettings() { localStorage.setItem('myUser', document.getElementById('myUser').value); localStorage.setItem('tgToken', document.getElementById('tgToken').value); localStorage.setItem('tgChatId', document.getElementById('tgChatId').value); alert("נשמר!"); }
 
+    function initApp() {
+        db.collection('meta').doc('all_lists').onSnapshot(doc => {
+            allListsNames = doc.exists ? (doc.data().names || []) : [MAIN_ID];
+            if (!allListsNames.includes(MAIN_ID)) allListsNames.unshift(MAIN_ID);
+            const select = document.getElementById('listSelect'); select.innerHTML = '';
+            allListsNames.forEach(name => {
+                const opt = document.createElement('option'); opt.value = name; opt.textContent = name === MAIN_ID ? "רשימה ראשית" : name.replace('list_', '');
+                if (name === LIST_ID) opt.selected = true; select.appendChild(opt);
+            });
+        });
+        loadList(LIST_ID);
+        document.getElementById('myUser').value = localStorage.getItem('myUser') || '';
+        document.getElementById('tgToken').value = localStorage.getItem('tgToken') || '';
+        document.getElementById('tgChatId').value = localStorage.getItem('tgChatId') || '';
+    }
+    function switchList(id) { loadList(id); }
     initApp();
 </script>
 </body>

@@ -7,16 +7,12 @@
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="רשימת קניות">
     
-    <link rel="apple-touch-icon" href="IMG_0026.png">
-    <link rel="icon" type="image/png" href="IMG_0026.png">
-
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     
     <style>
-        :root { --bg-dark: #121212; --bg-mid: #1e1e1e; --bg-light: #2a2a2a; --text: #ffffff; --accent: #4caf50; --danger: #f44336; --warning: #607d8b; --highlight: #555; --tg-blue: #2481cc; --tg-slate: #455a64; --note-yellow: #fff9c4; }
+        :root { --bg-dark: #121212; --bg-mid: #1e1e1e; --bg-light: #2a2a2a; --text: #ffffff; --accent: #4caf50; --danger: #f44336; --warning: #ff9800; --highlight: #555; --tg-blue: #2481cc; --tg-slate: #455a64; --note-highlight: #fff59d; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: var(--bg-dark); }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
@@ -24,157 +20,147 @@
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--bg-dark); }
         body { font-family: system-ui, sans-serif; color: var(--text); direction: rtl; display: flex; flex-direction: column; }
         
+        #authOverlay { position: fixed; inset: 0; background: var(--bg-dark); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
         header { 
-            background: var(--bg-mid); 
-            padding: 10px 16px; 
-            padding-top: max(10px, env(safe-area-inset-top)); /* משיכה עד הסוף למעלה כולל באייפון */
-            text-align: center; 
-            position: relative;
-            z-index: 1001; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5); 
-            border-bottom: 1px solid #333;
-            flex-shrink: 0;
+            background: var(--bg-mid); padding: 10px 16px; 
+            padding-top: max(10px, env(safe-area-inset-top)); text-align: center; 
+            position: relative; z-index: 1001; box-shadow: 0 2px 10px rgba(0,0,0,0.5); 
+            border-bottom: 1px solid #333; flex-shrink: 0;
         }
         header h1 { margin: 0; font-size: 18px; cursor: pointer; display: inline-block; }
         #currentListNameDisplay { font-size: 12px; color: var(--accent); font-weight: bold; margin-top: 4px; background: rgba(76, 175, 80, 0.1); display: inline-block; padding: 2px 10px; border-radius: 10px; }
+        header .menu-toggle { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: none; border: none; color: white; font-size: 28px; cursor: pointer; }
         
-        header .menu-toggle { 
-            position: absolute; 
-            right: 16px; 
-            top: calc(50% + (env(safe-area-inset-top) / 2)); 
-            transform: translateY(-50%); 
-            background: none; 
-            border: none; 
-            color: white; 
-            font-size: 28px; 
-            cursor: pointer; 
-        }
+        .user-menu-container { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); z-index: 1005; }
+        #userBadge { background: rgba(255, 255, 255, 0.08); padding: 5px 12px; border-radius: 8px; font-size: 12px; color: #ccc; border: 1px solid #444; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s; user-select: none; }
+        #userBadge:active { background: rgba(255, 255, 255, 0.15); }
+        
+        #userDropdown { position: absolute; top: calc(100% + 8px); left: 0; background: var(--bg-light); border: 1px solid #444; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); min-width: 120px; display: none; overflow: hidden; }
+        #userDropdown.show { display: block; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .dropdown-item { padding: 12px; font-size: 14px; color: var(--danger); cursor: pointer; display: flex; align-items: center; gap: 8px; background: none; border: none; width: 100%; text-align: right; }
+        .dropdown-item:active { background: rgba(244, 67, 54, 0.1); }
 
         .container { display: flex; flex: 1; position: relative; overflow: hidden; }
-        
-        .sidebar { 
-            width: 0; 
-            background: var(--bg-mid); 
-            border-left: 0 solid #333; 
-            overflow-y: auto; 
-            transition: 0.3s; 
-            z-index: 1000; 
-        }
+        .sidebar { width: 0; background: var(--bg-mid); border-left: 0 solid #333; overflow-y: auto; transition: 0.3s; z-index: 1000; display: flex; flex-direction: column; }
         .sidebar.open { width: 260px; border-left-width: 1px; }
-        .sidebar button { width: 90%; margin: 6px 5%; padding: 12px; background: var(--bg-light); border: none; border-radius: 10px; color: white; text-align: right; cursor: pointer; font-size: 14px; }
+        .sidebar button { width: 90%; margin: 6px 5%; padding: 12px; background: var(--bg-light); border: none; border-radius: 10px; color: white; text-align: right; cursor: pointer; font-size: 14px; flex-shrink: 0; }
         
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 900; }
         .overlay.active { display: block; }
         
         main { flex: 1; padding: 15px; overflow-y: auto; }
-        
         .box { background: var(--bg-mid); padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         input, select { background: var(--bg-light); border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; text-align: right; }
         .add-btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 14px; cursor: pointer; font-weight: 600; width: 100%; font-size: 16px; }
         
+        .add-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .add-header h3 { margin: 0; }
+        #categorySelect { width: auto; min-width: 110px; margin-bottom: 0; height: 36px; padding: 4px 8px; font-size: 14px; }
+
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--accent); color: white; padding: 12px 24px; border-radius: 50px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 9999; pointer-events: none; }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+
         .manage-btn { padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-bottom: 10px; }
         .btn-edit { background: var(--highlight); } .btn-delete { background: var(--danger); } .btn-cleanup { background: var(--warning); }
-        .btn-tg-now { background: var(--tg-blue) !important; } .btn-tg-all { background: var(--tg-slate) !important; }
+        .btn-tg-primary { background: var(--tg-blue) !important; } .btn-tg-secondary { background: var(--tg-slate) !important; }
         
         ul { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
         li { background: var(--bg-mid); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; border-right: 5px solid var(--accent); }
         li.done-item { opacity: 0.3; text-decoration: line-through; border-right-color: #555 !important; }
         
         .item-info { flex: 1; }
-        .cat-tag { font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 8px; color: #ccc; }
-        .item-note { color: var(--note-yellow); font-size: 13px; opacity: 0.9; }
-        .group-header { font-size: 14px; font-weight: bold; color: var(--accent); margin: 15px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        
+        .group-header { font-size: 14px; font-weight: bold; margin: 15px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .cat-badge { display: inline-block; background: #3d3d3d; color: #bbb; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 8px; font-weight: normal; vertical-align: middle; }
+        .item-meta { font-size: 11px; color: #aaa; margin-top: 5px; }
+        .item-note-text { color: var(--note-highlight); }
         .hidden { display: none !important; }
         hr { border: 0; border-top: 1px solid #444; margin: 15px 0; }
-        
-        /* עיצוב שורת כותרת הוספה עם קטגוריה */
-        .add-header-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 15px; 
-            gap: 10px;
-        }
-        .add-header-row h3 { margin: 0; font-size: 17px; white-space: nowrap; }
-        .add-header-row select { 
-            width: auto; 
-            min-width: 110px; 
-            margin-bottom: 0; 
-            padding: 6px 10px; 
-            font-size: 14px;
-        }
-
-        #categoryTitle { 
-            background: var(--bg-dark); 
-            padding: 5px 0; 
-            margin-bottom: 15px; 
-            position: sticky; 
-            top: -15px; 
-            z-index: 10;
-        }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: right; padding: 12px; border-bottom: 1px solid #333; }
+        th { color: var(--accent); font-size: 14px; }
     </style>
 </head>
 <body>
 
-<div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
+<div id="authOverlay">
+    <div class="box" style="width: 100%; max-width: 320px; text-align: center;">
+        <h2 id="authTitle" style="color:var(--accent)">כניסה</h2>
+        <input type="text" id="usernameInput" placeholder="שם משתמש" style="text-transform: lowercase;">
+        <input type="password" id="passwordInput" placeholder="סיסמה">
+        <button class="add-btn" onclick="handleAuth()">המשך</button>
+        <button style="background:none; border:none; color:#aaa; font-size:12px; margin-top:15px; cursor:pointer;" onclick="toggleAuthMode()" id="authToggleBtn">ליצירת משתמש חדש</button>
+    </div>
+</div>
 
-<header>
+<div id="overlay" class="overlay" onclick="closeAllMenus()"></div>
+<div id="toast">פעולה בוצעה בהצלחה! ✅</div>
+
+<header id="mainHeader" class="hidden">
+    <div class="user-menu-container">
+        <div id="userBadge" onclick="toggleUserDropdown(event)">
+            👤 <span id="userNameDisplay"></span>
+        </div>
+        <div id="userDropdown">
+            <button class="dropdown-item" onclick="logout()">
+                <span>🚪 התנתקות</span>
+            </button>
+        </div>
+    </div>
     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
     <h1 onclick="selectSidebarOption('הכל')">רשימת קניות 🛒</h1>
     <br>
     <div id="currentListNameDisplay">טוען...</div>
 </header>
 
-<div class="container">
+<div class="container hidden" id="mainContainer">
     <div id="sidebar" class="sidebar">
         <button style="background: var(--highlight); margin-top: 12px;" onclick="selectSidebarOption('add')">➕ הוספת מוצרים</button>
         <div id="categoryButtons"></div>
         <hr style="width: 80%; opacity: 0.2;">
-        <button style="background: var(--warning);" onclick="selectSidebarOption('settings')">⚙️ הגדרות וניהול</button>
+        <button style="background: var(--warning);" onclick="selectSidebarOption('settings')">⚙️ הגדרות</button>
+        <button id="adminBtn" class="hidden" style="background: var(--danger);" onclick="selectSidebarOption('admin')">🛡️ ניהול משתמשים</button>
         <div style="color: #777; font-size: 11px; font-weight: bold; margin: 15px 16px 5px 0;">🔔 עדכוני טלגרם</div>
-        <button class="btn-tg-now" onclick="sendCurrentListUpdate()">עדכן על הרשימה הנוכחית</button>
-        <button class="btn-tg-all" onclick="sendGlobalUpdate()">עדכן על כל הרשימות</button>
+        <button class="btn-tg-primary" onclick="sendTelegramUpdate(false)">שלח עדכון רשימה</button>
+        <button class="btn-tg-secondary" onclick="sendTelegramUpdate(true)">שלח רשימה מלאה</button>
     </div>
 
     <main id="mainArea">
-        <div id="addPage" class="hidden">
-            <div id="addContentContainer"></div>
-        </div>
-
+        <div id="addPage" class="hidden"><div id="addContentContainer"></div></div>
         <div id="settingsPage" class="hidden">
             <div class="box">
                 <h3>📂 ניהול רשימות</h3>
-                <select id="listSelect"></select>
-                <button class="add-btn" style="margin-bottom:15px;" onclick="switchList(document.getElementById('listSelect').value)">🚀 עבור לרשימה</button>
-                <div style="display:flex; gap:5px; margin-bottom:15px;">
+                <select id="listSelect" onchange="switchList(this.value, true)"></select>
+                <div style="display:flex; gap:5px; margin-top:10px;">
                     <input id="newListInput" placeholder="שם רשימה חדשה" style="margin-bottom:0;">
-                    <button onclick="createNewList()" style="width:70px; background:var(--accent); border:none; color:white; border-radius:8px;">צור</button>
+                    <button onclick="createNewList()" style="width:70px; background:var(--accent); border:none; color:white; border-radius:8px; font-weight:bold;">צור</button>
                 </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="manage-btn btn-edit" style="flex:1;" onclick="renameCurrentList()">✏️ שנה שם</button>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button id="renameBtn" class="manage-btn btn-edit" style="flex:1;" onclick="renameCurrentList()">✏️ שנה שם</button>
                     <button class="manage-btn btn-delete" style="flex:1;" onclick="deleteCurrentList()">❌ מחק רשימה</button>
                 </div>
                 <hr>
-                <h3>🧹 ניהול תוכן</h3>
-                <button class="manage-btn btn-cleanup" onclick="clearAllItemsOnly()">🧺 מחק את כל הפריטים</button>
-                <button class="manage-btn btn-cleanup" style="background:#455a64;" onclick="fullResetList()">🔄 איפוס מלא</button>
+                <h3>🧹 ניקוי ואיפוס</h3>
+                <button class="manage-btn btn-cleanup" onclick="clearAllItemsOnly()">🧺 מחק פריטים בלבד</button>
+                <button class="manage-btn btn-reset-all" style="background:#b71c1c" onclick="resetListFully()">💥 איפוס רשימה (מחיקת הכל)</button>
                 <hr>
-                <h3>🏷️ ניהול קטגוריות</h3>
+                <h3>🏷️ קטגוריות</h3>
                 <div style="display:flex; gap:5px;">
                     <input id="newCatInput" placeholder="קטגוריה חדשה" style="margin-bottom:0;">
                     <button onclick="addCategory()" style="width:60px; background:var(--accent); border:none; color:white; border-radius:8px;">+</button>
                 </div>
                 <ul id="manageCatsList" style="margin-top:15px;"></ul>
                 <hr>
-                <h3>👤 הגדרות בוט טלגרם</h3>
+                <h3>👤 הגדרות טלגרם</h3>
                 <input id="tgToken" placeholder="Telegram Bot Token">
                 <input id="tgChatId" placeholder="Telegram Chat ID">
                 <input id="myUser" placeholder="השם שלך">
                 <button class="add-btn" onclick="saveSettings()">שמור הגדרות</button>
             </div>
         </div>
-
+        <div id="adminPage" class="hidden"><div class="box"><h3 style="color:var(--danger)">🛡️ ניהול משתמשים</h3><table><thead><tr><th>משתמש</th><th>סיסמה</th><th>פעולה</th></tr></thead><tbody id="adminUsersTable"></tbody></table></div></div>
         <div id="listPage">
             <div id="categoryTitle" style="font-weight:bold; color:var(--accent);">מציג: הכל</div>
             <div id="listContainer"></div>
@@ -187,142 +173,261 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const MAIN_ID = "family_shared_list_v1";
-    let LIST_ID = localStorage.getItem('currentListID') || MAIN_ID;
-    let categories = []; let currentItems = []; let allListsNames = []; let currentView = 'הכל';
-    let unsubscribeCats = null; let unsubscribeItems = null;
+    let CURRENT_USER = localStorage.getItem('logged_user');
+    let LIST_ID = localStorage.getItem('currentListID') || "family_shared_list_v1";
+    let LAST_SELECTED_CAT = null; 
+    let categories = []; let currentItems = []; let allListsIds = []; let currentView = 'הכל';
+    let unsubscribeCats = null; let unsubscribeItems = null; let isLoginMode = true;
 
-    function getCategoryColor(str) {
-        if (!str || str === 'הכל') return '#4caf50';
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        return `hsl(${Math.abs(hash) % 360}, 65%, 50%)`;
+    function toggleUserDropdown(e) { e.stopPropagation(); const dropdown = document.getElementById('userDropdown'); const overlay = document.getElementById('overlay'); const isOpen = dropdown.classList.contains('show'); closeAllMenus(); if (!isOpen) { dropdown.classList.add('show'); overlay.classList.add('active'); } }
+    
+    // סגירת כל התפריטים
+    function closeAllMenus() { 
+        document.getElementById('userDropdown').classList.remove('show'); 
+        document.getElementById('sidebar').classList.remove('open'); 
+        document.getElementById('overlay').classList.remove('active'); 
     }
 
-    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); }
+    // פונקציית Toggle לסיידבר
+    function toggleSidebar() { 
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const isOpen = sidebar.classList.contains('open');
+        
+        closeAllMenus(); // קודם כל מאפסים הכל
+        
+        if (!isOpen) {
+            sidebar.classList.add('open'); 
+            overlay.classList.add('active'); 
+        }
+    }
+
+    function getCategoryColor(str) { if (!str || str === 'הכל') return 'var(--accent)'; let hash = 0; for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash); const h = Math.abs(hash) % 360; return `hsl(${h}, 70%, 55%)`; }
+    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+    function toggleAuthMode() { isLoginMode = !isLoginMode; document.getElementById('authTitle').textContent = isLoginMode ? "כניסה" : "הרשמה"; }
+    
+    async function handleAuth() {
+        const u = document.getElementById('usernameInput').value.trim().toLowerCase();
+        const p = document.getElementById('passwordInput').value.trim();
+        if(!u || !p) return;
+        const uRef = db.collection('app_users').doc(u);
+        const doc = await uRef.get();
+        if(isLoginMode) {
+            if(doc.exists && doc.data().password === p) { localStorage.setItem('logged_user', u); location.reload(); }
+            else alert("שגיאה בפרטים");
+        } else {
+            if(doc.exists) alert("שם משתמש תפוס");
+            else { await uRef.set({password: p}); await uRef.collection('meta').doc('lists').set({names: ["family_shared_list_v1"]}); localStorage.setItem('logged_user', u); location.reload(); }
+        }
+    }
+
+    function logout() { if(confirm("להתנתק?")) { localStorage.removeItem('logged_user'); location.reload(); } }
+    function getBaseRef() { return db.collection('app_users').doc(CURRENT_USER); }
 
     function selectSidebarOption(option) {
-        document.getElementById('addPage').classList.add('hidden');
-        document.getElementById('settingsPage').classList.add('hidden');
-        document.getElementById('listPage').classList.add('hidden');
+        document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
         if (option === 'add') { document.getElementById('addPage').classList.remove('hidden'); renderAddPage(); }
         else if (option === 'settings') { document.getElementById('settingsPage').classList.remove('hidden'); }
+        else if (option === 'admin') { document.getElementById('adminPage').classList.remove('hidden'); loadAdmin(); }
         else { document.getElementById('listPage').classList.remove('hidden'); document.getElementById('categoryTitle').textContent = `מציג: ${option}`; currentView = option; renderList(); }
-        if (document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
+        closeAllMenus();
+    }
+
+    function isListNameDuplicate(newName) {
+        const clean = newName.trim().toLowerCase();
+        return allListsIds.some(id => {
+            const display = (id === "family_shared_list_v1" ? "רשימה ראשית" : id.replace('list_', '')).trim().toLowerCase();
+            return display === clean;
+        });
+    }
+
+    async function createNewList() { 
+        const nInput = document.getElementById('newListInput'); 
+        const n = nInput.value.trim(); 
+        if(!n) return;
+        if(isListNameDuplicate(n)) { alert("שם רשימה זה כבר קיים!"); nInput.value = ''; return; }
+        const id = "list_" + n;
+        try {
+            await getBaseRef().collection('meta').doc('lists').update({ names: firebase.firestore.FieldValue.arrayUnion(id) });
+            nInput.value = ''; 
+            switchList(id, true); 
+            showToast(`הרשימה "${n}" נוצרה! ✨`);
+        } catch (e) { alert("שגיאה ביצירת הרשימה"); }
+    }
+
+    async function deleteCurrentList() { 
+        if(LIST_ID === "family_shared_list_v1") return alert("לא ניתן למחוק את הרשימה הראשית"); 
+        if(confirm("מחיקה סופית של כל הפריטים והרשימה?")) { 
+            try {
+                const idToDelete = LIST_ID;
+                await getBaseRef().collection('meta').doc('lists').update({ names: firebase.firestore.FieldValue.arrayRemove(idToDelete) });
+                await getBaseRef().collection('lists').doc(idToDelete).delete();
+                switchList("family_shared_list_v1", true);
+                showToast("הרשימה נמחקה 🗑️");
+            } catch(e) { alert("שגיאה במחיקה"); }
+        } 
+    }
+
+    function switchList(id, stayInSettings) { 
+        if(!id) return; 
+        loadList(id); 
+        const select = document.getElementById('listSelect');
+        if(select) select.value = id;
+        if(!stayInSettings) selectSidebarOption('הכל'); 
+    }
+
+    async function loadAdmin() {
+        if (CURRENT_USER !== 'admin') return;
+        const table = document.getElementById('adminUsersTable'); table.innerHTML = '';
+        const snap = await db.collection('app_users').get();
+        snap.forEach(doc => {
+            const u = doc.id; const p = doc.data().password;
+            table.innerHTML += `<tr><td>${u}</td><td>${p}</td><td>${u !== 'admin' ? `<button onclick="delUser('${u}')" style="color:var(--danger); background:none; border:none; cursor:pointer;">מחק</button>` : '-'}</td></tr>`;
+        });
+    }
+    async function delUser(u) { if(confirm(`למחוק את ${u}?`)) { await db.collection('app_users').doc(u).delete(); loadAdmin(); } }
+
+    async function renameCurrentList() {
+        if (LIST_ID === "family_shared_list_v1") return alert("לא ניתן לשנות שם לרשימה הראשית");
+        const newName = prompt("שם חדש:"); if (!newName || newName.trim() === "") return;
+        if (isListNameDuplicate(newName)) { alert("שם זה כבר בשימוש!"); return; }
+        const newId = "list_" + newName.trim(); const oldId = LIST_ID;
+        try {
+            const oldDoc = await getBaseRef().collection('lists').doc(oldId).get();
+            if (oldDoc.exists) await getBaseRef().collection('lists').doc(newId).set(oldDoc.data());
+            const itemsSnap = await getBaseRef().collection('lists').doc(oldId).collection('items').get();
+            const batch = db.batch();
+            itemsSnap.forEach(itemDoc => { batch.set(getBaseRef().collection('lists').doc(newId).collection('items').doc(itemDoc.id), itemDoc.data()); batch.delete(itemDoc.ref); });
+            batch.update(getBaseRef().collection('meta').doc('lists'), { names: firebase.firestore.FieldValue.arrayRemove(oldId) });
+            batch.update(getBaseRef().collection('meta').doc('lists'), { names: firebase.firestore.FieldValue.arrayUnion(newId) });
+            batch.delete(getBaseRef().collection('lists').doc(oldId));
+            await batch.commit(); switchList(newId, true); showToast("השם שונה!");
+        } catch (e) { alert("שגיאה"); }
+    }
+
+    async function sendTelegramUpdate(isFull) {
+        const token = localStorage.getItem('tgToken'); const chatId = localStorage.getItem('tgChatId');
+        if (!token || !chatId) return alert("הגדר בוט בהגדרות!");
+        const user = localStorage.getItem('myUser') || CURRENT_USER;
+        let msg = `🛒 <b>עדכון מרשימת הקניות</b>\nעל ידי: <b>${user}</b>\n\n`;
+        if (isFull) {
+            const pending = currentItems.filter(i => !i.done);
+            if (pending.length === 0) msg += "הרשימה ריקה! 🎉";
+            else pending.forEach(i => msg += `▫️ ${i.text} ${i.amount ? `(${i.amount})` : ''}\n`);
+        } else { msg += "בוצעו שינויים ברשימה!"; }
+        try { await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }) }); showToast("נשלח לטלגרם!"); } catch (e) { alert("שגיאה"); }
     }
 
     function renderAddPage() {
         const container = document.getElementById('addContentContainer');
         const realCats = categories.filter(c => c !== 'הכל');
-        if (realCats.length === 0) {
-            container.innerHTML = `<div class="box"><p style="text-align:center;color:#aaa">אין קטגוריות. יש להוסיף קטגוריה בהגדרות.</p><button class="add-btn" onclick="selectSidebarOption('settings')">עבור להגדרות</button></div>`;
-            return;
+        if (realCats.length === 0) { 
+            container.innerHTML = `
+                <div class="box" style="text-align: center; padding: 30px;">
+                    <div style="font-size: 40px; margin-bottom: 15px;">⚠️</div>
+                    <h3 style="margin-bottom: 10px;">אין קטגוריות להצגה</h3>
+                    <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">כדי להוסיף מוצרים, עליך ליצור לפחות קטגוריה אחת.</p>
+                    <button class="add-btn" onclick="selectSidebarOption('settings')" style="background: var(--warning);">
+                        ⚙️ עבור להגדרות ליצירת קטגוריה
+                    </button>
+                </div>`; 
+            return; 
         }
-        container.innerHTML = `
-            <div class="box">
-                <div class="add-header-row">
-                    <h3>הוספת מוצרים</h3>
-                    <select id="categorySelect">
-                        ${realCats.map(c => `<option value="${c}">${c}</option>`).join('')}
-                    </select>
-                </div>
-                <div id="rowsContainer"></div>
-                <button onclick="addNewRow()" style="background:none; border:1px dashed var(--accent); color:var(--accent); width:100%; padding:10px; margin-bottom:15px; border-radius:8px;">+ שורה חדשה</button>
-                <button class="add-btn" onclick="saveAllRows()">שמור לרשימה</button>
-            </div>`;
+        const selectedCat = LAST_SELECTED_CAT || realCats[0];
+        container.innerHTML = `<div class="box"><div class="add-header"><h3>הוספה</h3><select id="categorySelect" onchange="LAST_SELECTED_CAT = this.value">${realCats.map(c => `<option value="${c}" ${c === selectedCat ? 'selected' : ''}>${c}</option>`).join('')}</select></div><div id="rowsContainer"></div><button onclick="addNewRow()" style="border:1px dashed var(--accent); background:none; color:var(--accent); width:100%; padding:10px; margin-bottom:15px; border-radius:8px;">+ שורה חדשה</button><button class="add-btn" onclick="saveAllRows()">💾 שמור לרשימה</button></div>`;
         addNewRow();
     }
 
-    function addNewRow() {
-        const rowId = Date.now();
-        const html = `<div style="display:flex; gap:4px; margin-bottom:10px;" id="row_${rowId}"><input type="text" placeholder="מוצר" class="in-p" style="flex:2;margin-bottom:0"><input type="text" placeholder="כמות" class="in-a" style="flex:1;margin-bottom:0"><input type="text" placeholder="הערה" class="in-n" style="flex:2;margin-bottom:0"><button onclick="document.getElementById('row_${rowId}').remove()" style="background:none;border:none;color:var(--danger)">✕</button></div>`;
-        document.getElementById('rowsContainer').insertAdjacentHTML('beforeend', html);
+    function addNewRow() { const html = `<div style="display:flex; gap:5px; margin-bottom:10px;"><input type="text" placeholder="מוצר" class="in-p" style="flex:2; margin:0;"><input type="text" placeholder="כמות" class="in-a" style="flex:1; margin:0;"><input type="text" placeholder="הערה" class="in-n" style="flex:2; margin:0;"><button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button></div>`; document.getElementById('rowsContainer').insertAdjacentHTML('beforeend', html); }
+
+    async function saveAllRows() {
+        const cat = document.getElementById('categorySelect').value; LAST_SELECTED_CAT = cat;
+        const user = localStorage.getItem('myUser') || CURRENT_USER;
+        const batch = db.batch(); const rows = document.querySelectorAll('#rowsContainer > div'); let count = 0;
+        rows.forEach(row => {
+            const p = row.querySelector('.in-p').value.trim();
+            if(p) {
+                const d = getBaseRef().collection("lists").doc(LIST_ID).collection("items").doc();
+                batch.set(d, { text: p, amount: row.querySelector('.in-a').value.trim(), note: row.querySelector('.in-n').value.trim(), category: cat, done: false, addedBy: user, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                count++;
+            }
+        });
+        if(count > 0) { await batch.commit(); showToast(`נוספו ${count} פריטים!`); renderAddPage(); }
     }
+
+    async function clearAllItemsOnly() { if(confirm("למחוק פריטים?")) { const b = db.batch(); currentItems.forEach(i => b.delete(getBaseRef().collection("lists").doc(LIST_ID).collection("items").doc(i.id))); await b.commit(); } }
+    async function resetListFully() { if(confirm("איפוס מלא?")) { await getBaseRef().collection('lists').doc(LIST_ID).set({categories:['הכל']}); const b = db.batch(); currentItems.forEach(i => b.delete(getBaseRef().collection("lists").doc(LIST_ID).collection("items").doc(i.id))); await b.commit(); } }
+    async function addCategory() { const n = document.getElementById('newCatInput').value.trim(); if(!n) return; await getBaseRef().collection('lists').doc(LIST_ID).set({categories: firebase.firestore.FieldValue.arrayUnion(n)}, { merge: true }); document.getElementById('newCatInput').value=''; }
+    async function removeCategory(cat) { if(confirm(`למחוק ${cat}?`)) { await getBaseRef().collection('lists').doc(LIST_ID).update({categories: firebase.firestore.FieldValue.arrayRemove(cat)}); } }
 
     function loadList(id) {
         if (unsubscribeCats) unsubscribeCats(); if (unsubscribeItems) unsubscribeItems();
         LIST_ID = id; localStorage.setItem('currentListID', id);
-        document.getElementById('currentListNameDisplay').textContent = id === MAIN_ID ? "רשימה ראשית" : id.replace('list_', '');
-        unsubscribeCats = db.collection('lists').doc(LIST_ID).onSnapshot(doc => { categories = (doc.exists && doc.data().categories) ? doc.data().categories : ['הכל']; updateCategoryUI(); });
-        unsubscribeItems = db.collection("lists").doc(LIST_ID).collection("items").orderBy("createdAt", "desc").onSnapshot(snap => { currentItems = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderList(); });
+        document.getElementById('currentListNameDisplay').textContent = id === "family_shared_list_v1" ? "רשימה ראשית" : id.replace('list_', '');
+        unsubscribeCats = getBaseRef().collection('lists').doc(LIST_ID).onSnapshot(doc => { categories = (doc.exists && doc.data().categories) ? doc.data().categories : ['הכל']; updateCategoryUI(); });
+        unsubscribeItems = getBaseRef().collection("lists").doc(LIST_ID).collection("items").orderBy("createdAt", "desc").onSnapshot(snap => { currentItems = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderList(); });
     }
 
     function updateCategoryUI() {
         const btns = document.getElementById('categoryButtons'); const manage = document.getElementById('manageCatsList');
         btns.innerHTML = `<button onclick="selectSidebarOption('הכל')">הכל</button>`; manage.innerHTML = '';
-        categories.forEach(cat => { if (cat !== 'הכל') { btns.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`; manage.innerHTML += `<li style="border-right-color: ${getCategoryColor(cat)};">${cat} <button onclick="removeCategory('${cat}')" style="background:none; border:none; color:var(--danger);">🗑</button></li>`; } });
+        categories.forEach(cat => {
+            if (cat !== 'הכל') {
+                const color = getCategoryColor(cat);
+                btns.innerHTML += `<button onclick="selectSidebarOption('${cat}')">${cat}</button>`;
+                manage.innerHTML += `<li style="border-right-color:${color}">${cat} <button onclick="removeCategory('${cat}')" style="color:var(--danger); background:none; border:none;">🗑</button></li>`;
+            }
+        });
     }
 
     function renderList() {
         const container = document.getElementById('listContainer'); container.innerHTML = '';
         let filtered = currentItems.filter(i => currentView === 'הכל' || i.category === currentView);
-        const grouped = filtered.reduce((acc, item) => { const cat = item.category || 'ללא קטגוריה'; if (!acc[cat]) acc[cat] = []; acc[cat].push(item); return acc; }, {});
-        Object.keys(grouped).sort().forEach(catName => {
-            if (currentView === 'הכל') { const h = document.createElement('div'); h.className = 'group-header'; h.style.color = getCategoryColor(catName); h.textContent = catName; container.appendChild(h); }
+        const grouped = filtered.reduce((acc, item) => { const cat = item.category || 'כללי'; if (!acc[cat]) acc[cat] = []; acc[cat].push(item); return acc; }, {});
+        Object.keys(grouped).forEach(catName => {
+            const catColor = getCategoryColor(catName);
+            container.insertAdjacentHTML('beforeend', `<div class="group-header" style="color:${catColor}; border-bottom-color:${catColor}">${catName}</div>`);
             const ul = document.createElement('ul');
             grouped[catName].sort((a,b) => a.done - b.done).forEach(item => {
-                const li = document.createElement('li'); li.className = item.done ? 'done-item' : ''; li.style.borderRightColor = getCategoryColor(catName);
-                li.onclick = () => db.collection("lists").doc(LIST_ID).collection("items").doc(item.id).update({ done: !item.done });
-                li.innerHTML = `<div class="item-info"><strong>${item.text}</strong> ${item.amount ? `<small>(${item.amount})</small>` : ''} ${currentView === 'הכל' ? `<span class="cat-tag">${catName}</span>` : ''}<br><small style="color:#aaa">${item.user}</small> ${item.note ? `<span class="item-note"> | ${item.note}</span>` : ''}</div><button onclick="event.stopPropagation(); if(confirm('למחוק?')) db.collection('lists').doc(LIST_ID).collection('items').doc('${item.id}').delete()" style="background:none; border:none; color:var(--danger); font-size:20px;">🗑</button>`;
+                const li = document.createElement('li'); li.className = item.done ? 'done-item' : ''; li.style.borderRightColor = catColor;
+                li.onclick = () => getBaseRef().collection("lists").doc(LIST_ID).collection("items").doc(item.id).update({ done: !item.done });
+                li.innerHTML = `<div class="item-info"><strong>${item.text}</strong>${item.amount ? ` <small>(${item.amount})</small>` : ''}<span class="cat-badge">${item.category || 'כללי'}</span><div class="item-meta">${item.addedBy || '---'}${item.note ? ` | <span class="item-note-text">${item.note}</span>` : ''}</div></div><button onclick="event.stopPropagation(); getBaseRef().collection('lists').doc(LIST_ID).collection('items').doc('${item.id}').delete()" style="color:var(--danger); background:none; border:none;">🗑</button>`;
                 ul.appendChild(li);
             });
             container.appendChild(ul);
         });
     }
 
-    async function sendTelegram(msg) {
-        const token = localStorage.getItem('tgToken'); const chatId = localStorage.getItem('tgChatId');
-        if (!token || !chatId) return alert("הזן פרטי טלגרם בהגדרות");
-        try { await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }) }); alert("נשלח!"); }
-        catch (e) { alert("שגיאה בשליחה"); }
-    }
-    async function sendCurrentListUpdate() { const activeCount = currentItems.filter(i => !i.done).length; if (activeCount === 0) return alert("הרשימה ריקה"); const listName = LIST_ID === MAIN_ID ? "רשימה ראשית" : LIST_ID.replace('list_', ''); const user = localStorage.getItem('myUser') || "בן משפחה"; await sendTelegram(`🔔 <b>תזכורת</b>\n${user} מעדכן שיש פריטים ב<b>${listName}</b>.`); }
-    async function sendGlobalUpdate() { const user = localStorage.getItem('myUser') || "בן משפחה"; await sendTelegram(`🌍 <b>תזכורת כללית</b>\n${user} מזכיר לבדוק את כל רשימות הקניות!`); }
-
-    function saveAllRows() {
-        const cat = document.getElementById('categorySelect').value; const user = localStorage.getItem('myUser') || "אנונימי"; const batch = db.batch(); let added = 0;
-        Array.from(document.getElementById('rowsContainer').children).forEach(row => {
-            const p = row.querySelector('.in-p').value.trim();
-            if (p) { const doc = db.collection("lists").doc(LIST_ID).collection("items").doc(); batch.set(doc, { text: p, amount: row.querySelector('.in-a').value.trim(), note: row.querySelector('.in-n').value.trim(), category: cat, user, done: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); added++; }
-        });
-        if (added > 0) batch.commit().then(() => { renderAddPage(); alert("נשמר!"); });
-    }
-
-    async function createNewList() { const name = document.getElementById('newListInput').value.trim(); if (name) { const newID = "list_" + name; await db.collection('meta').doc('all_lists').set({ names: firebase.firestore.FieldValue.arrayUnion(newID) }, {merge: true}); document.getElementById('newListInput').value = ''; loadList(newID); } }
-    async function renameCurrentList() { const oldID = LIST_ID; if (oldID === MAIN_ID) return alert("לא ניתן לשנות שם לרשימה ראשית"); const newName = prompt("שם חדש:"); if (!newName) return; const newID = "list_" + newName; await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayRemove(oldID) }); await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayUnion(newID) }); loadList(newID); }
-    async function deleteCurrentList() { if (LIST_ID === MAIN_ID) return alert("לא ניתן למחוק ראשית"); if (confirm("למחוק?")) { await db.collection('meta').doc('all_lists').update({ names: firebase.firestore.FieldValue.arrayRemove(LIST_ID) }); loadList(MAIN_ID); } }
-    async function clearAllItemsOnly() { if (confirm("למחוק הכל?")) { const batch = db.batch(); currentItems.forEach(i => batch.delete(db.collection("lists").doc(LIST_ID).collection("items").doc(i.id))); await batch.commit(); } }
-    async function fullResetList() { if (confirm("איפוס מלא?")) { await clearAllItemsOnly(); await db.collection('lists').doc(LIST_ID).update({ categories: ['הכל'] }); } }
-    
-    async function addCategory() { 
-        let n = document.getElementById('newCatInput').value.trim(); 
-        if (!n) return;
-        const existingColors = categories.map(c => getCategoryColor(c));
-        let newColor = getCategoryColor(n);
-        while (existingColors.includes(newColor)) { n += " "; newColor = getCategoryColor(n); }
-        await db.collection('lists').doc(LIST_ID).set({ categories: firebase.firestore.FieldValue.arrayUnion(n) }, {merge: true}); 
-        document.getElementById('newCatInput').value = ''; 
-    }
-
-    async function removeCategory(cat) { if (confirm(`למחוק ${cat}?`)) await db.collection('lists').doc(LIST_ID).update({ categories: firebase.firestore.FieldValue.arrayRemove(cat) }); }
-    function saveSettings() { localStorage.setItem('myUser', document.getElementById('myUser').value); localStorage.setItem('tgToken', document.getElementById('tgToken').value); localStorage.setItem('tgChatId', document.getElementById('tgChatId').value); alert("נשמר!"); }
+    function saveSettings() { localStorage.setItem('myUser', document.getElementById('myUser').value); localStorage.setItem('tgToken', document.getElementById('tgToken').value); localStorage.setItem('tgChatId', document.getElementById('tgChatId').value); showToast("נשמר!"); }
 
     function initApp() {
-        db.collection('meta').doc('all_lists').onSnapshot(doc => {
-            allListsNames = doc.exists ? (doc.data().names || []) : [MAIN_ID];
-            if (!allListsNames.includes(MAIN_ID)) allListsNames.unshift(MAIN_ID);
-            const select = document.getElementById('listSelect'); select.innerHTML = '';
-            allListsNames.forEach(name => {
-                const opt = document.createElement('option'); opt.value = name; opt.textContent = name === MAIN_ID ? "רשימה ראשית" : name.replace('list_', '');
-                if (name === LIST_ID) opt.selected = true; select.appendChild(opt);
+        if(!CURRENT_USER) return;
+        document.getElementById('userNameDisplay').textContent = CURRENT_USER;
+        document.getElementById('authOverlay').classList.add('hidden');
+        document.getElementById('mainHeader').classList.remove('hidden');
+        document.getElementById('mainContainer').classList.remove('hidden');
+        if(CURRENT_USER === 'admin') document.getElementById('adminBtn').classList.remove('hidden');
+        
+        getBaseRef().collection('meta').doc('lists').onSnapshot(doc => {
+            allListsIds = doc.exists ? (doc.data().names || []) : ["family_shared_list_v1"];
+            if(!allListsIds.includes("family_shared_list_v1")) allListsIds.unshift("family_shared_list_v1");
+            const select = document.getElementById('listSelect'); if(!select) return;
+            select.innerHTML = '';
+            allListsIds.forEach(id => {
+                const opt = document.createElement('option'); opt.value = id;
+                opt.textContent = id === "family_shared_list_v1" ? "רשימה ראשית" : id.replace('list_', '');
+                if (id === LIST_ID) opt.selected = true; 
+                select.appendChild(opt);
             });
+            select.value = LIST_ID;
         });
         loadList(LIST_ID);
         document.getElementById('myUser').value = localStorage.getItem('myUser') || '';
         document.getElementById('tgToken').value = localStorage.getItem('tgToken') || '';
         document.getElementById('tgChatId').value = localStorage.getItem('tgChatId') || '';
     }
-    function switchList(id) { loadList(id); }
+
+    window.onclick = function(event) { if (!event.target.closest('.user-menu-container')) { document.getElementById('userDropdown').classList.remove('show'); } };
     initApp();
 </script>
 </body>

@@ -357,7 +357,37 @@
             table.innerHTML += `<tr><td>${u}</td><td>${p}</td><td>${u !== 'admin' ? `<button onclick="delUser('${u}')" style="color:var(--danger); background:none; border:none; cursor:pointer;">מחק</button>` : '-'}</td></tr>`;
         });
     }
-    async function delUser(u) { if(confirm(`למחוק את ${u}?`)) { await db.collection('app_users').doc(u).delete(); loadAdmin(); } }
+    async function delUser(u) {
+    if(!confirm(`למחוק את ${u}? כל הנתונים, כולל פריטים וקטגוריות מכל הרשימות, יימחקו לצמיתות.`)) return;
+    try {
+        const userRef = db.collection('app_users').doc(u);
+        
+        // שליפת רשימת כל שמות הרשימות של המשתמש מהמטא
+        const listsMeta = await userRef.collection('meta').doc('lists').get();
+        const listNames = listsMeta.exists ? listsMeta.data().names || [] : ["family_shared_list_v1"];
+
+        // לולאה שמוחקת את התוכן של כל רשימה ורשימה
+        for (const listName of listNames) {
+            const itemsSnap = await userRef.collection('lists').doc(listName).collection('items').get();
+            const batch = db.batch();
+            itemsSnap.forEach(d => batch.delete(d.ref));
+            await batch.commit(); // מחיקת כל הפריטים בתוך הרשימה
+            await userRef.collection('lists').doc(listName).delete(); // מחיקת הגדרות הרשימה (קטגוריות)
+        }
+
+        // מחיקת מסמך המטא ומסמך המשתמש עצמו
+        await userRef.collection('meta').doc('lists').delete();
+        await userRef.delete();
+        
+        showToast(`המשתמש ${u} וכל נתוניו נמחקו מהשרת`);
+        loadAdmin();
+    } catch (e) {
+        console.error(e);
+        alert("שגיאה במחיקה יסודית");
+    }
+}
+
+
 
     async function renameCurrentList() {
         if (LIST_ID === "family_shared_list_v1") return alert("לא ניתן לשנות שם לרשימה הראשית");
@@ -473,18 +503,31 @@
         if(CURRENT_USER === 'admin') document.getElementById('adminBtn').classList.remove('hidden');
         
         getBaseRef().collection('meta').doc('lists').onSnapshot(doc => {
-            allListsIds = doc.exists ? (doc.data().names || []) : ["family_shared_list_v1"];
-            if(!allListsIds.includes("family_shared_list_v1")) allListsIds.unshift("family_shared_list_v1");
-            const select = document.getElementById('listSelect'); if(!select) return;
-            select.innerHTML = '';
-            allListsIds.forEach(id => {
-                const opt = document.createElement('option'); opt.value = id;
-                opt.textContent = id === "family_shared_list_v1" ? "רשימה ראשית" : id.replace('list_', '');
-                if (id === LIST_ID) opt.selected = true; 
-                select.appendChild(opt);
-            });
-            select.value = LIST_ID;
+    allListsIds = doc.exists ? (doc.data().names || []) : ["family_shared_list_v1"];
+    
+    // וודא שהרשימה הראשית תמיד קיימת במערך
+    if(!allListsIds.includes("family_shared_list_v1")) allListsIds.unshift("family_shared_list_v1");
+
+    const s = document.getElementById('listSelect');
+    if(s) {
+        s.innerHTML = '';
+        allListsIds.forEach(id => {
+            const o = document.createElement('option');
+            o.value = id;
+            o.textContent = id === "family_shared_list_v1" ? "רשימה ראשית" : id.replace('list_', '');
+            s.appendChild(o);
         });
+
+        // הגנה קריטית: אם הרשימה ששמורה בדפדפן לא קיימת במטא של המשתמש בשרת - אפס לראשית
+        if(!allListsIds.includes(LIST_ID)) {
+            LIST_ID = "family_shared_list_v1";
+            localStorage.setItem('currentListID', LIST_ID);
+        }
+        s.value = LIST_ID;
+    }
+    loadList(LIST_ID); // טעינת הרשימה הנכונה
+});
+
         loadList(LIST_ID);
         document.getElementById('myUser').value = localStorage.getItem('myUser') || '';
         document.getElementById('tgToken').value = localStorage.getItem('tgToken') || '';

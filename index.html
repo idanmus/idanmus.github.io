@@ -17,8 +17,23 @@
         ::-webkit-scrollbar-track { background: var(--bg-dark); }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
         
-        html, body { height: 100dvh; margin: 0; padding: 0; overflow: hidden; background: var(--bg-dark); }
-        body { font-family: system-ui, sans-serif; color: var(--text); direction: rtl; display: flex; flex-direction: column; }
+        html, body { 
+    height: 100%; 
+    height: -webkit-fill-available; /* פתרון ספציפי לספארי */
+    margin: 0; 
+    padding: 0; 
+    overflow: hidden; 
+    background: var(--bg-dark); 
+}
+body { 
+    font-family: system-ui, sans-serif; 
+    color: var(--text); 
+    direction: rtl; 
+    display: flex; 
+    flex-direction: column; 
+    min-height: 100dvh; /* גובה דינמי למובייל */
+}
+
         
         #authOverlay { position: fixed; inset: 0; background: var(--bg-dark); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 20px; }
 
@@ -121,7 +136,15 @@
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 900; }
         .overlay.active { display: block; }
         
-        main { flex: 1; padding: 15px; overflow-y: auto; padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+        main { 
+    flex: 1; 
+    padding: 15px; 
+    overflow-y: auto; 
+    /* הגדלנו את המרווח ל-80px כדי להבטיח שהכל גלוי */
+    padding-bottom: calc(80px + env(safe-area-inset-bottom)); 
+    box-sizing: border-box;
+}
+
         
         .box { background: var(--bg-mid); padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         input, select { background: var(--bg-light); border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; text-align: right; }

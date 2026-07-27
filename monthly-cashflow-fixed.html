@@ -85,6 +85,12 @@
   }
   .fx-btn:active{ background:var(--line); }
   .fx-status{ font-size:10.5px; color:var(--muted-2); margin-top:3px; }
+  .stock-card{ border:1px solid var(--line); border-radius:14px; background:var(--panel); padding:13px 14px; margin-bottom:14px; }
+  .stock-card-head{ display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; margin-bottom:9px; }
+  .stock-card-head .icon{ color:var(--blue); font-size:15px; }
+  .stock-card-row{ display:grid; grid-template-columns:minmax(0,1fr) auto 92px; gap:8px; align-items:center; }
+  .stock-card-row input{ min-width:0; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 9px; font-size:13px; }
+  .stock-price-display{ direction:ltr; text-align:center; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 7px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text); }
 
   /* SECTION */
   .section{ border:1px solid var(--line); border-radius:16px; background: var(--panel); margin-bottom: 14px; overflow:hidden; }
@@ -180,6 +186,16 @@
     </div>
   </div>
 
+  <div class="stock-card">
+    <div class="stock-card-head"><span class="icon">↗</span><span>נתוני מניה — עבור ESPP ו־RSU</span></div>
+    <div class="stock-card-row">
+      <input type="text" id="stockTicker" placeholder="סימול מניה, לדוגמה MSFT" autocomplete="off" autocapitalize="characters">
+      <button class="fx-btn" id="priceRefresh">משיכת מחיר</button>
+      <div class="stock-price-display" id="stockPriceDisplay">$—</div>
+    </div>
+    <div class="fx-status" id="priceStatus"></div>
+  </div>
+
   <!-- INCOME -->
   <div class="section">
     <div class="section-head" data-target="body-income">
@@ -246,15 +262,6 @@
           <label>אורך תקופת ההפרשה</label>
           <div class="input-row has-suffix"><input type="number" id="esppPeriod" inputmode="decimal" placeholder="6"><span class="suffix">חודשים</span></div>
         </div>
-      </div>
-
-      <div class="field">
-        <label>טיקר המניה (לא חובה — לצורך משיכת מחיר נוכחי)</label>
-        <div class="fetch-row">
-          <input type="text" id="esppTicker" placeholder="לדוגמה: MSFT" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:11px 12px; font-size:14px;">
-          <button class="fx-btn" id="priceRefresh">משיכת מחיר</button>
-        </div>
-        <div class="fx-status" id="priceStatus"></div>
       </div>
 
       <div class="grant-grid">
@@ -346,6 +353,7 @@
   const DEFAULT_STATE = {
     incomes: [ {id:uid(), name:'משכורת 1', amount:''}, {id:uid(), name:'משכורת 2', amount:''} ],
     fx: { usdIls: 3.70, lastUpdated: null },
+    stock: { ticker:'', currentPrice:'', lastUpdated:null },
     rsuGrants: [],
     espp: {
       gross:'', contrib:10, period:6, tax:25,
@@ -354,7 +362,8 @@
       netOfEspp:true
     },
     expenseCategories: DEFAULT_CATS,
-    expenses: []
+    expenses: [],
+    selectedExpenseCategoryId:'cat-housing'
   };
 
   let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -368,6 +377,7 @@
         state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), loaded);
         if(!state.espp) state.espp = DEFAULT_STATE.espp;
         if(!state.fx) state.fx = DEFAULT_STATE.fx;
+        if(!state.stock) state.stock = {ticker: state.espp?.ticker || '', currentPrice: state.espp?.currentPrice || '', lastUpdated:null};
         if(!state.expenseCategories || !state.expenseCategories.length) state.expenseCategories = DEFAULT_CATS;
       }
     }catch(e){ /* first run */ }
@@ -415,32 +425,47 @@
 
   // ---------- LIVE PRICE (best effort) ----------
   async function tryFetchPrice(){
-    const ticker = (state.espp.ticker||'').trim().toUpperCase();
-    if(!ticker){ $('priceStatus').textContent = 'הזן טיקר קודם'; return; }
+    const ticker = (state.stock?.ticker||'').trim().toUpperCase();
+    if(!ticker){ $('priceStatus').textContent = 'יש להזין סימול מניה קודם'; return; }
     $('priceStatus').textContent = 'מושך מחיר נוכחי…';
-    const endpoints = [
+    $('stockPriceDisplay').textContent = '$…';
+
+    const urls = [
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`,
-      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`,
+      `https://api.nasdaq.com/api/quote/${encodeURIComponent(ticker)}/info?assetclass=stocks`
     ];
-    for(const url of endpoints){
+
+    for(const url of urls){
       try{
-        const res = await fetch(url, {cache:'no-store'});
+        const res = await fetch(url, {cache:'no-store', headers:{'Accept':'application/json'}});
         if(!res.ok) throw new Error('http');
         const data = await res.json();
-        const result = data?.chart?.result?.[0];
-        const metaPrice = result?.meta?.regularMarketPrice;
-        const closes = result?.indicators?.quote?.[0]?.close || [];
-        const close = Number(metaPrice || [...closes].reverse().find(v=>v!=null));
-        if(close>0 && isFinite(close)){
-          state.espp.currentPrice = close;
-          $('esppCurrentPrice').value = close.toFixed(2);
-          $('priceStatus').textContent = `מחיר עדכני עבור ${ticker}: $${close.toFixed(2)} ✓`;
+        let price = 0;
+        if(data?.chart?.result?.[0]){
+          const result = data.chart.result[0];
+          const closes = result?.indicators?.quote?.[0]?.close || [];
+          price = Number(result?.meta?.regularMarketPrice || [...closes].reverse().find(v=>v!=null));
+        }else{
+          const raw = data?.data?.primaryData?.lastSalePrice;
+          price = Number(String(raw||'').replace(/[^0-9.\-]/g,''));
+        }
+        if(price>0 && isFinite(price)){
+          state.stock.ticker = ticker;
+          state.stock.currentPrice = price;
+          state.stock.lastUpdated = new Date().toISOString();
+          state.espp.currentPrice = price;
+          $('stockTicker').value = ticker;
+          $('stockPriceDisplay').textContent = `$${price.toFixed(2)}`;
+          $('esppCurrentPrice').value = price.toFixed(2);
+          $('priceStatus').textContent = `המחיר העדכני של ${ticker} נמשך בהצלחה ✓`;
           updateSummary(); scheduleSave();
           return;
         }
       }catch(e){}
     }
-    $('priceStatus').textContent = 'לא ניתן היה למשוך מחיר אוטומטית — ניתן להזין ידנית';
+    $('stockPriceDisplay').textContent = '$—';
+    $('priceStatus').textContent = 'לא ניתן למשוך מחיר בדפדפן זה. אפשר להזין את המחיר ידנית בשדה ESPP או RSU.';
   }
 
   // ---------- CALC ----------
@@ -529,7 +554,8 @@
     $('esppContrib').value = state.espp.contrib ?? '';
     $('esppPeriod').value = state.espp.period ?? '';
     $('esppTax').value = state.espp.tax ?? '';
-    $('esppTicker').value = state.espp.ticker ?? '';
+    $('stockTicker').value = state.stock?.ticker ?? '';
+    $('stockPriceDisplay').textContent = Number(state.stock?.currentPrice)>0 ? `$${Number(state.stock.currentPrice).toFixed(2)}` : '$—';
     $('esppPurchasePrice').value = state.espp.purchasePrice ?? '';
     $('esppMarketAtPurchase').value = state.espp.marketAtPurchase ?? '';
     $('esppCurrentPrice').value = state.espp.currentPrice ?? '';
@@ -640,9 +666,12 @@
 
   function renderCategorySelect(){
     const sel = $('newExpenseCat');
-    const prev = sel.value;
     sel.innerHTML = state.expenseCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-    if(state.expenseCategories.some(c=>c.id===prev)) sel.value = prev;
+    const selected = state.expenseCategories.some(c=>c.id===state.selectedExpenseCategoryId)
+      ? state.selectedExpenseCategoryId
+      : state.expenseCategories[0]?.id;
+    state.selectedExpenseCategoryId = selected;
+    if(selected) sel.value = selected;
   }
 
   function renderExpenses(){
@@ -763,7 +792,8 @@
   $('esppContrib').addEventListener('input', e=>{ state.espp.contrib = e.target.value; updateSummary(); scheduleSave(); });
   $('esppPeriod').addEventListener('input', e=>{ state.espp.period = e.target.value; updateSummary(); scheduleSave(); });
   $('esppTax').addEventListener('input', e=>{ state.espp.tax = e.target.value; updateSummary(); scheduleSave(); });
-  $('esppTicker').addEventListener('input', e=>{ state.espp.ticker = e.target.value; scheduleSave(); });
+  $('stockTicker').addEventListener('input', e=>{ state.stock.ticker = e.target.value.toUpperCase(); scheduleSave(); });
+  $('stockTicker').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); tryFetchPrice(); } });
   $('esppPurchasePrice').addEventListener('input', e=>{ state.espp.purchasePrice = e.target.value; updateSummary(); scheduleSave(); });
   $('esppMarketAtPurchase').addEventListener('input', e=>{ state.espp.marketAtPurchase = e.target.value; updateSummary(); scheduleSave(); });
   $('esppCurrentPrice').addEventListener('input', e=>{ state.espp.currentPrice = e.target.value; updateSummary(); scheduleSave(); });
@@ -783,8 +813,9 @@
     state.rsuGrants.push({id:uid(), valueUsd:'', years:4, tax:25, useCurrentValue:false, originalSharePrice:'', currentSharePrice:''});
     renderRSUList(); updateSummary(); scheduleSave();
   });
+  $('newExpenseCat').addEventListener('change', e=>{ state.selectedExpenseCategoryId = e.target.value; scheduleSave(); });
   $('addExpense').addEventListener('click', ()=>{
-    const selected = $('newExpenseCat').value;
+    const selected = state.selectedExpenseCategoryId || $('newExpenseCat').value;
     const catId = state.expenseCategories.some(c=>c.id===selected) ? selected : state.expenseCategories[0].id;
     state.expenses.push({id:uid(), name:'', amount:'', categoryId:catId});
     renderExpenses(); updateSummary(); scheduleSave();
@@ -795,6 +826,7 @@
       const cat = {id:uid(), name:name.trim()};
       state.expenseCategories.push(cat);
       renderCategorySelect(); renderExpenses(); scheduleSave();
+      state.selectedExpenseCategoryId = cat.id;
       $('newExpenseCat').value = cat.id;
     }
   });

@@ -229,7 +229,7 @@
     </div>
     <div class="section-body collapsed" id="body-rsu">
       <div class="field" style="margin-top:12px;">
-        <div class="hint" style="margin-top:0;">שווי כל הענקה מוזן בדולר. אפשר לחשב לפי השווי המקורי, או לעדכן את השווי לפי היחס בין מחיר המניה הנוכחי למחיר המניה בזמן ההענקה.</div>
+        <div class="hint" style="margin-top:0;">שווי כל הענקה מוזן בדולר. בחישוב לפי מחיר מניה נוכחי, כמות המניות תחושב לפי שווי ההענקה חלקי מחיר המניה בזמן ה־grant, תעוגל כלפי מעלה למניה שלמה, ולאחר מכן תוכפל במחיר המניה הנוכחי.</div>
       </div>
       <div id="rsuList"></div>
       <button class="add-btn" id="addGrant">+ הוספת הענקת RSU</button>
@@ -541,11 +541,16 @@
       if(months<=0) return sum;
 
       let valueUsd = originalValueUsd;
+
       if(g.useCurrentValue){
-        const originalPrice = parseFloat(g.originalSharePrice)||0;
-        const currentPrice = parseFloat(g.currentSharePrice)||0;
-        if(originalPrice>0 && currentPrice>0){
-          valueUsd = originalValueUsd * (currentPrice/originalPrice);
+        const grantSharePrice = parseFloat(g.originalSharePrice)||0;
+        const currentSharePrice = parseFloat(g.currentSharePrice)||0;
+
+        if(grantSharePrice>0 && currentSharePrice>0 && originalValueUsd>0){
+          const promisedShares = Math.ceil(originalValueUsd / grantSharePrice);
+          valueUsd = promisedShares * currentSharePrice;
+        }else{
+          return sum;
         }
       }
 
@@ -691,16 +696,36 @@
         </div>
         <div class="grant-grid mode-panel ${g.useCurrentValue?'active':''}" data-rsu-prices="${g.id}">
           <div class="field">
-            <label>מחיר מניה בזמן ההענקה ($)</label>
+            <label>מחיר מניה בזמן ה־grant ($)</label>
             <div class="input-row has-suffix"><input type="number" class="g-original-price" data-id="${g.id}" value="${g.originalSharePrice ?? ''}" placeholder="0"><span class="suffix">$</span></div>
           </div>
           <div class="field">
             <label>מחיר מניה נוכחי ($)</label>
             <div class="input-row has-suffix"><input type="number" class="g-current-price" data-id="${g.id}" value="${g.currentSharePrice ?? ''}" placeholder="0"><span class="suffix">$</span></div>
           </div>
+          <div class="field" style="grid-column:1/-1;">
+            <div class="hint" data-rsu-shares="${g.id}" style="margin-top:0;"></div>
+          </div>
         </div>
       `;
       list.appendChild(div);
+
+      const grantValue = parseFloat(g.valueUsd)||0;
+      const grantPrice = parseFloat(g.originalSharePrice)||0;
+      const currentPrice = parseFloat(g.currentSharePrice)||0;
+      const sharesHint = div.querySelector(`[data-rsu-shares="${g.id}"]`);
+
+      if(sharesHint){
+        if(g.useCurrentValue && grantValue>0 && grantPrice>0){
+          const shares = Math.ceil(grantValue / grantPrice);
+          const currentValue = currentPrice>0 ? shares * currentPrice : 0;
+          sharesHint.textContent = currentPrice>0
+            ? `כמות מניות שהובטחה: ${shares.toLocaleString('en-US')} · שווי נוכחי: $${currentValue.toLocaleString('en-US', {maximumFractionDigits:2})}`
+            : `כמות מניות שהובטחה: ${shares.toLocaleString('en-US')} · יש להזין מחיר מניה נוכחי`;
+        }else if(g.useCurrentValue){
+          sharesHint.textContent = 'יש להזין את שווי ההענקה ואת מחיר המניה בזמן ה־grant.';
+        }
+      }
     });
     list.querySelectorAll('.remove-btn').forEach(btn=>{
       btn.addEventListener('click', ()=>{

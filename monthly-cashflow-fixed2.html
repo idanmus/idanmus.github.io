@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="תזרים חודשי">
+<meta name="theme-color" content="#0B0E12">
+<title>תזרים חודשי — הכנסה פנויה ממוצעת</title>
+<link rel="preconnect" href="https://ifonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0B0E12;
+    --panel: #12161C;
+    --panel-2: #171C24;
+    --line: #232A34;
+    --text: #EDEFF2;
+    --muted: #8A92A0;
+    --muted-2: #5B6472;
+    --mint: #34D9A8;
+    --amber: #F0AA5C;
+    --red: #E9636B;
+    --blue: #6FA8F5;
+    --violet: #B18CF0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family:'Heebo', system-ui, sans-serif;
+    min-height:100vh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  ::selection{ background: var(--mint); color:#06110D; }
+  input:focus, select:focus{ outline: none; border-color: var(--mint) !important; }
+  input[type=number]{ font-family:'JetBrains Mono', monospace; }
+  .num{ font-family:'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; direction:ltr; unicode-bidi: plaintext; }
+
+  .wrap{ max-width: 560px; margin:0 auto; padding: 18px 16px 60px; }
+
+  /* HERO */
+  .hero{
+    position:relative; border:1px solid var(--line); border-radius: 20px;
+    padding: 22px 20px 20px;
+    background: linear-gradient(160deg, #131820 0%, #0E1217 100%);
+    overflow:hidden; margin-bottom: 14px;
+  }
+  .hero::before{
+    content:""; position:absolute; inset:-40% -10% auto auto;
+    width: 260px; height:260px;
+    background: radial-gradient(circle, rgba(52,217,168,0.16), transparent 70%);
+    pointer-events:none;
+  }
+  .hero-eyebrow{ font-size: 11px; letter-spacing:.14em; color:var(--muted-2); font-weight:700; text-transform:uppercase; margin-bottom:10px; }
+  .hero-figure{ font-size: 42px; font-weight:700; line-height:1.05; display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
+  .hero-figure .cur{ font-size:22px; color:var(--muted); font-weight:500; }
+  .hero-figure.pos{ color: var(--mint); }
+  .hero-figure.neg{ color: var(--red); }
+  .hero-sub{ color:var(--muted); font-size:13px; margin-top:8px; }
+  .flowbar{ display:flex; height:10px; border-radius:6px; overflow:hidden; margin-top:18px; background:var(--panel-2); border:1px solid var(--line); }
+  .flowbar > div{ height:100%; }
+  .legend{ display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; }
+  .legend .item{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted); }
+  .legend .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  /* FX MINI CARD */
+  .fx-card{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    border:1px solid var(--line); border-radius:14px; background:var(--panel);
+    padding: 11px 14px; margin-bottom:14px; font-size:13px;
+  }
+  .fx-left{ display:flex; align-items:center; gap:8px; color:var(--muted); }
+  .fx-left .icon{ color:var(--violet); font-size:15px; }
+  .fx-right{ display:flex; align-items:center; gap:6px; }
+  .fx-right input{
+    width:70px; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:6px 8px; font-size:13px; text-align:left;
+  }
+  .fx-btn{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--muted);
+    border-radius:8px; padding:6px 9px; font-size:12px; cursor:pointer;
+  }
+  .fx-btn:active{ background:var(--line); }
+  .fx-status{ font-size:10.5px; color:var(--muted-2); margin-top:3px; }
+  .stock-card{ border:1px solid var(--line); border-radius:14px; background:var(--panel); padding:13px 14px; margin-bottom:14px; }
+  .stock-card-head{ display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; margin-bottom:9px; }
+  .stock-card-head .icon{ color:var(--blue); font-size:15px; }
+  .stock-card-row{ display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; align-items:center; }
+  .stock-card-row input{ min-width:0; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 9px; font-size:13px; }
+  .stock-price-display{ direction:ltr; text-align:center; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 7px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text); }
+
+  /* SECTION */
+  .section{ border:1px solid var(--line); border-radius:16px; background: var(--panel); margin-bottom: 14px; overflow:hidden; }
+  .section-head{ display:flex; align-items:center; justify-content:space-between; padding: 14px 16px; cursor:pointer; user-select:none; }
+  .section-head-left{ display:flex; align-items:center; gap:10px; }
+  .section-icon{ width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+  .section-title{ font-weight:700; font-size:14.5px; }
+  .section-amount{ font-size:13.5px; font-weight:500; }
+  .section-body{ padding: 4px 16px 16px; border-top:1px solid var(--line); }
+  .section-body.collapsed{ display:none; }
+  .chev{ color:var(--muted-2); transition: transform .2s; font-size:11px; }
+  .chev.open{ transform: rotate(180deg); }
+
+  .field{ margin-top:14px; }
+  .field label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:500; }
+  .field .hint{ font-size:11px; color:var(--muted-2); margin-top:5px; line-height:1.5; }
+  .input-row{ position:relative; display:flex; align-items:center; }
+  .input-row input[type=number], .input-row input[type=text], .input-row select{
+    width:100%; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--text); border-radius:10px; padding:11px 12px; font-size:15px; font-weight:500;
+  }
+  .input-row select{ font-family:'Heebo',sans-serif; -webkit-appearance:none; appearance:none; }
+  .input-row input[type=text]{ font-family:'Heebo',sans-serif; }
+  .input-row .suffix{ position:absolute; left:12px; color:var(--muted-2); font-size:12.5px; pointer-events:none; }
+  .input-row.has-suffix input{ padding-left: 40px; }
+
+  .grant, .income-row{ background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:12px; position:relative; }
+  .grant-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .grant-grid.three{ grid-template-columns:1fr 1fr 1fr; }
+  .grant-grid .field{ margin-top:0; }
+  .remove-btn{ position:absolute; top:10px; left:10px; width:24px; height:24px; border-radius:7px; background:var(--panel); border:1px solid var(--line); color:var(--red); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .add-btn{ width:100%; margin-top:12px; padding:11px; border-radius:10px; border:1px dashed var(--line); background:transparent; color:var(--muted); font-family:'Heebo',sans-serif; font-size:13px; font-weight:600; cursor:pointer; }
+  .add-btn:active{ background:var(--panel-2); }
+
+  .income-row{ display:flex; gap:10px; align-items:center; padding:10px 12px; }
+  .income-row input[type=text]{ flex:1; background:transparent; border:none; color:var(--text); font-size:14px; padding:4px 0; }
+  .income-row .amt-wrap{ display:flex; align-items:center; gap:4px; }
+  .income-row input[type=number]{ width:82px; background:transparent; border:none; color:var(--text); text-align:left; font-size:14px; }
+  .income-row .cur-mark{ color:var(--muted-2); font-size:12px; }
+  .income-row .rm{ color:var(--muted-2); font-size:16px; cursor:pointer; padding:2px 4px; }
+  .income-row{ flex-wrap:wrap; }
+  .income-main{ display:flex; gap:10px; align-items:center; width:100%; }
+  .income-main > input[type=text]{ flex:1; min-width:0; }
+  .bonus-toggle{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:8px; margin-top:2px; border-top:1px solid var(--line); }
+  .bonus-toggle-label{ font-size:12px; color:var(--muted); }
+  .bonus-btn{ border:1px solid var(--line); background:var(--panel); color:var(--muted); border-radius:8px; padding:6px 10px; font-family:'Heebo',sans-serif; font-size:11.5px; cursor:pointer; }
+  .bonus-btn.active{ border-color:var(--mint); color:var(--mint); background:rgba(52,217,168,0.08); }
+  .bonus-panel{ width:100%; display:none; grid-template-columns:1fr 1fr; gap:10px; }
+  .bonus-panel.active{ display:grid; }
+  .bonus-field label{ display:block; font-size:11px; color:var(--muted-2); margin-bottom:5px; }
+  .bonus-field input{ width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 9px; font-size:13px; }
+  .bonus-summary{ grid-column:1/-1; font-size:11px; color:var(--muted-2); line-height:1.5; }
+
+  .toggle-group{ display:flex; gap:8px; margin-top:6px; }
+  .toggle-opt{ flex:1; text-align:center; padding:10px 8px; border-radius:10px; border:1px solid var(--line); background:var(--panel-2); color:var(--muted); font-size:12.5px; font-weight:600; cursor:pointer; line-height:1.4; }
+  .toggle-opt.active{ border-color: var(--mint); color: var(--mint); background: rgba(52,217,168,0.08); }
+  .mode-panel{ display:none; }
+  .mode-panel.active{ display:block; }
+
+  .fetch-row{ display:flex; gap:8px; margin-top:8px; }
+  .fetch-row input{ flex:1; }
+  .fetch-row .fx-btn{ flex-shrink:0; }
+
+  /* EXPENSES */
+  .cat-group{ margin-top:14px; }
+  .cat-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .cat-name{ font-size:12.5px; font-weight:700; color:var(--muted); }
+  .cat-total{ font-size:12px; color:var(--muted-2); }
+  .expense-row{ background:var(--panel-2); border:1px solid var(--line); border-radius:12px; display:flex; gap:10px; align-items:center; padding:10px 12px; margin-bottom:8px; }
+  .expense-row input[type=text]{ flex:1; background:transparent; border:none; color:var(--text); font-size:14px; padding:4px 0; }
+  .expense-row .amt-wrap{ display:flex; align-items:center; gap:4px; }
+  .expense-row input[type=number]{ width:78px; background:transparent; border:none; color:var(--text); text-align:left; font-size:14px; }
+  .expense-row .cur-mark{ color:var(--muted-2); font-size:12px; }
+  .expense-row .rm{ color:var(--muted-2); font-size:16px; cursor:pointer; padding:2px 4px; }
+  .cat-select-row{ display:flex; gap:8px; align-items:center; margin-top:14px; }
+  .cat-select-row select{ flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px 12px; font-size:13px; font-family:'Heebo',sans-serif; }
+  .new-cat-btn{ background:var(--panel-2); border:1px solid var(--line); color:var(--muted); border-radius:10px; padding:10px 12px; font-size:12px; cursor:pointer; white-space:nowrap; }
+  .cat-actions{ display:flex; align-items:center; gap:6px; }
+  .delete-cat-btn{ background:transparent; border:1px solid var(--line); color:var(--red); border-radius:8px; padding:4px 7px; font-size:11px; cursor:pointer; }
+  .stock-list{ margin-top:10px; display:grid; gap:8px; }
+  .stock-row{ display:grid; grid-template-columns:minmax(0,1fr) 90px auto auto; gap:8px; align-items:center; }
+  .stock-row input{ min-width:0; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 9px; font-size:13px; }
+  .stock-row-price{ direction:ltr; text-align:center; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 7px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text); }
+  .stock-row .rm-stock{ color:var(--red); cursor:pointer; padding:4px 6px; font-size:15px; }
+  .stock-empty{ color:var(--muted-2); font-size:12px; padding:8px 2px 2px; text-align:center; }
+  .stock-updated{ grid-column:1/-1; color:var(--muted-2); font-size:10.5px; margin-top:-3px; }
+  .stock-select{ width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px 12px; font-size:13px; font-family:'Heebo',sans-serif; }
+
+  .footer-note{ text-align:center; color:var(--muted-2); font-size:11px; margin-top:22px; line-height:1.8; }
+  .reset-link{ color:var(--muted-2); text-decoration:underline; cursor:pointer; }
+
+  .save-pill{ position:fixed; bottom:16px; left:50%; transform:translateX(-50%) translateY(20px); background: var(--mint); color:#06110D; font-weight:700; font-size:12px; padding:8px 16px; border-radius:20px; opacity:0; transition: all .3s ease; pointer-events:none; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  .save-pill.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-eyebrow">תמונת מצב חודשית ממוצעת</div>
+    <div class="hero-figure pos" id="heroFigure"><span class="cur">₪</span><span class="num" id="heroNum">0</span></div>
+    <div class="hero-sub" id="heroSub">הכנסה פנויה ממוצעת לחודש</div>
+    <div class="flowbar" id="flowbar"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="fx-card">
+    <div class="fx-left"><span class="icon">⇄</span><span>שער דולר–שקל <span style="color:var(--muted-2)">(ל-RSU ו-ESPP)</span></span></div>
+    <div>
+      <div class="fx-right">
+        <input type="number" id="fxRate" step="0.01" inputmode="decimal">
+        <button class="fx-btn" id="fxRefresh">רענון</button>
+      </div>
+      <div class="fx-status" id="fxStatus"></div>
+    </div>
+  </div>
+
+  <div class="stock-card">
+    <div class="stock-card-head"><span class="icon">↗</span><span>מניות במעקב — עבור ESPP ו־RSU</span></div>
+    <div class="stock-card-row">
+      <input type="text" id="stockTicker" placeholder="סימול מניה, לדוגמה MSFT" autocomplete="off" autocapitalize="characters">
+      <button class="fx-btn" id="addStock">הוספת מניה</button>
+      <button class="fx-btn" id="refreshAllStocks">רענון הכל</button>
+    </div>
+    <div class="stock-list" id="stockList"></div>
+    <div class="fx-status" id="priceStatus"></div>
+  </div>
+
+  <!-- INCOME -->
+  <div class="section">
+    <div class="section-head" data-target="body-income">
+      <div class="section-head-left">
+        <div class="section-icon" style="background:rgba(111,168,245,0.12); color:var(--blue);">₪</div>
+        <div class="section-title">הכנסות קבועות</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="section-amount num" id="amt-income" style="color:var(--blue);">0</div>
+        <div class="chev open" id="chev-income">▾</div>
+      </div>
+    </div>
+    <div class="section-body" id="body-income">
+      <div class="hint" style="margin-top:10px;">משכורות (של שני בני הזוג) וכל הכנסה קבועה נוספת. אפשר להוסיף כמה שורות שצריך.</div>
+      <div id="incomeList" style="margin-top:8px;"></div>
+      <button class="add-btn" id="addIncome">+ הוספת מקור הכנסה</button>
+    </div>
+  </div>
+
+  <!-- RSU -->
+  <div class="section">
+    <div class="section-head" data-target="body-rsu">
+      <div class="section-head-left">
+        <div class="section-icon" style="background:rgba(240,170,92,0.12); color:var(--amber);">◆</div>
+        <div class="section-title">RSU — הבשלת מניות ($)</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="section-amount num" id="amt-rsu" style="color:var(--amber);">0</div>
+        <div class="chev" id="chev-rsu">▾</div>
+      </div>
+    </div>
+    <div class="section-body collapsed" id="body-rsu">
+      <div class="field" style="margin-top:12px;">
+        <div class="hint" style="margin-top:0;">שווי כל הענקה מוזן בדולר. בחישוב לפי מחיר מניה נוכחי, כמות המניות תחושב לפי שווי ההענקה חלקי מחיר המניה בזמן ה־grant, תעוגל כלפי מעלה למניה שלמה, ולאחר מכן תוכפל במחיר המניה הנוכחי.</div>
+      </div>
+      <div id="rsuList"></div>
+      <button class="add-btn" id="addGrant">+ הוספת הענקת RSU</button>
+    </div>
+  </div>
+
+  <!-- ESPP -->
+  <div class="section">
+    <div class="section-head" data-target="body-espp">
+      <div class="section-head-left">
+        <div class="section-icon" style="background:rgba(52,217,168,0.12); color:var(--mint);">%</div>
+        <div class="section-title">ESPP — תוכנית רכישת מניות</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="section-amount num" id="amt-espp" style="color:var(--mint);">0</div>
+        <div class="chev" id="chev-espp">▾</div>
+      </div>
+    </div>
+    <div class="section-body collapsed" id="body-espp">
+      <div class="field">
+        <label>מניה עבור ESPP</label>
+        <select id="esppStockSelect" class="stock-select"></select>
+      </div>
+
+      <div class="field">
+        <label>שכר ברוטו חודשי (בסיס להפרשה, ₪)</label>
+        <div class="input-row has-suffix"><input type="number" id="esppGross" inputmode="decimal" placeholder="0"><span class="suffix">₪</span></div>
+      </div>
+      <div class="grant-grid">
+        <div class="field">
+          <label>אחוז הפרשה מהברוטו</label>
+          <div class="input-row has-suffix"><input type="number" id="esppContrib" inputmode="decimal" placeholder="10"><span class="suffix">%</span></div>
+        </div>
+        <div class="field">
+          <label>אורך תקופת ההפרשה</label>
+          <div class="input-row has-suffix"><input type="number" id="esppPeriod" inputmode="decimal" placeholder="6"><span class="suffix">חודשים</span></div>
+        </div>
+      </div>
+
+      <div class="grant-grid">
+        <div class="field">
+          <label>מחיר רכישה בפועל למניה ($)</label>
+          <div class="input-row has-suffix"><input type="number" id="esppPurchasePrice" inputmode="decimal" placeholder="0"><span class="suffix">$</span></div>
+        </div>
+        <div class="field">
+          <label>מחיר שוק בזמן הרכישה ($)</label>
+          <div class="input-row has-suffix"><input type="number" id="esppMarketAtPurchase" inputmode="decimal" placeholder="0"><span class="suffix">$</span></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>מחיר נוכחי למניה ($)</label>
+        <div class="input-row has-suffix"><input type="number" id="esppCurrentPrice" inputmode="decimal" placeholder="נמשך מהמאגר" readonly><span class="suffix">$</span></div>
+        <div class="hint">המחיר נמשך אוטומטית מהמניה שנבחרה בכרטיס העליון.</div>
+      </div>
+
+      <div class="field">
+        <label>שיטת חישוב ESPP:</label>
+        <div class="toggle-group">
+          <div class="toggle-opt" id="priceModeCurrent">לפי מחיר מניה נוכחי</div>
+          <div class="toggle-opt" id="priceModePurchase">לפי מחיר בזמן הרכישה</div>
+          <div class="toggle-opt" id="priceModeFixed">רווח קבוע של 15%</div>
+        </div>
+        <div class="hint" id="esppModeHint"></div>
+      </div>
+
+      <div class="field">
+        <label>מס על הרווח</label>
+        <div class="input-row has-suffix"><input type="number" id="esppTax" inputmode="decimal" placeholder="25"><span class="suffix">%</span></div>
+      </div>
+
+      <div class="field">
+        <label>ההכנסות הקבועות שהזנת למעלה — כבר אחרי ניכוי ה-ESPP?</label>
+        <div class="toggle-group">
+          <div class="toggle-opt active" id="esppNetYes">כן, זה מה שבפועל<br>נכנס לחשבון</div>
+          <div class="toggle-opt" id="esppNetNo">לא, זה לפני<br>הניכוי</div>
+        </div>
+        <div class="hint" id="esppToggleHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="section">
+    <div class="section-head" data-target="body-exp">
+      <div class="section-head-left">
+        <div class="section-icon" style="background:rgba(233,99,107,0.12); color:var(--red);">−</div>
+        <div class="section-title">הוצאות קבועות</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="section-amount num" id="amt-exp" style="color:var(--red);">0</div>
+        <div class="chev open" id="chev-exp">▾</div>
+      </div>
+    </div>
+    <div class="section-body" id="body-exp">
+      <div class="hint" style="margin-top:10px;">הוצאות קבועות חודשיות, מחולקות לקטגוריות. אפשר להוסיף קטגוריות חדשות לפי הצורך.</div>
+      <div id="expByCategory"></div>
+      <div class="cat-select-row">
+        <select id="newExpenseCat"></select>
+        <button class="new-cat-btn" id="addExpense">+ הוצאה</button>
+        <button class="new-cat-btn" id="addCategory">+ קטגוריה</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    כל הנתונים נשמרים אוטומטית ונטענים בפעם הבאה שתפתחו את האפליקציה.<br>
+    <span class="reset-link" id="resetAll">איפוס כל הנתונים</span>
+  </div>
+</div>
+
+<div class="save-pill" id="savePill">נשמר ✓</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString('en-US');
+  const uid = () => Math.random().toString(36).slice(2,9);
+
+  const DEFAULT_CATS = [
+    {id:'cat-housing', name:'דיור'},
+    {id:'cat-insurance', name:'ביטוחים'},
+    {id:'cat-subs', name:'מנויים'},
+    {id:'cat-transport', name:'תחבורה'},
+    {id:'cat-other', name:'אחר'},
+  ];
+
+  const DEFAULT_STATE = {
+    incomes: [ {id:uid(), name:'משכורת 1', amount:'', bonusEnabled:false, bonusPct:''}, {id:uid(), name:'משכורת 2', amount:'', bonusEnabled:false, bonusPct:''} ],
+    fx: { usdIls: 3.70, lastUpdated: null },
+    stocks: [],
+    rsuGrants: [],
+    espp: {
+      gross:'', contrib:10, period:6, tax:25,
+      ticker:'', purchasePrice:'', marketAtPurchase:'', currentPrice:'',
+      priceMode:'purchase', // 'purchase', 'current' or 'fixed15'
+      netOfEspp:true
+    },
+    expenseCategories: DEFAULT_CATS,
+    expenses: [],
+    selectedExpenseCategoryId:'cat-housing'
+  };
+
+  let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  let saveTimer = null;
+
+  async function loadState(){
+    try{
+      let raw = null;
+      if(window.storage?.get){
+        const res = await window.storage.get('finance-state-v2', false);
+        raw = res?.value || null;
+      }else{
+        raw = localStorage.getItem('finance-state-v2');
+      }
+      if(raw){
+        const loaded = JSON.parse(raw);
+        state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), loaded);
+        if(!state.espp) state.espp = DEFAULT_STATE.espp;
+        if(!state.fx) state.fx = DEFAULT_STATE.fx;
+        if(!Array.isArray(state.stocks)) state.stocks = [];
+        // Migration from older versions that stored a single stock.
+        if(loaded.stock?.ticker && !state.stocks.some(s=>s.ticker===loaded.stock.ticker)){
+          state.stocks.push({
+            id:uid(),
+            ticker:String(loaded.stock.ticker).toUpperCase(),
+            currentPrice:loaded.stock.currentPrice || '',
+            lastUpdated:loaded.stock.lastUpdated || null
+          });
+        }
+        state.rsuGrants.forEach(g=>{ if(g.ticker==null) g.ticker=''; });
+        if(state.espp.ticker==null) state.espp.ticker='';
+        if(!state.expenseCategories || !state.expenseCategories.length) state.expenseCategories = DEFAULT_CATS;
+      }
+    }catch(e){ /* first run */ }
+    render();
+    tryFetchFx(true);
+  }
+
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async ()=>{
+      try{
+        const serialized = JSON.stringify(state);
+        if(window.storage?.set){
+          await window.storage.set('finance-state-v2', serialized, false);
+        }else{
+          localStorage.setItem('finance-state-v2', serialized);
+        }
+        const pill = $('savePill');
+        pill.classList.add('show');
+        setTimeout(()=>pill.classList.remove('show'), 1200);
+      }catch(e){ console.error('save failed', e); }
+    }, 500);
+  }
+
+  // ---------- FX ----------
+  async function tryFetchFx(silent){
+    $('fxStatus').textContent = 'מושך שער עדכני…';
+    const endpoints = [
+      'https://api.frankfurter.app/latest?from=USD&to=ILS',
+      'https://open.er-api.com/v6/latest/USD'
+    ];
+    for(const url of endpoints){
+      try{
+        const res = await fetch(url, {cache:'no-store'});
+        if(!res.ok) throw new Error('http');
+        const data = await res.json();
+        const rate = data?.rates?.ILS;
+        if(rate && isFinite(rate)){
+          state.fx.usdIls = Number(rate);
+          state.fx.lastUpdated = new Date().toISOString();
+          $('fxRate').value = Number(rate).toFixed(3);
+          $('fxStatus').textContent = 'שער עדכני נמשך אוטומטית ✓';
+          updateSummary(); scheduleSave();
+          return;
+        }
+      }catch(e){}
+    }
+    $('fxStatus').textContent = silent ? 'לא ניתן היה למשוך שער — ניתן להזין ידנית' : 'המשיכה נכשלה, נסה שוב או הזן ידנית';
+  }
+
+  // ---------- LIVE PRICE ----------
+  async function fetchJsonWithTimeout(url, timeoutMs = 12000){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try{
+      const res = await fetch(url, {
+        cache:'no-store',
+        signal:controller.signal,
+        headers:{'Accept':'application/json'}
+      });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }finally{
+      clearTimeout(timer);
+    }
+  }
+
+  function extractYahooPrice(data){
+    const result = data?.chart?.result?.[0];
+    if(!result) return 0;
+    const metaPrice = Number(result?.meta?.regularMarketPrice);
+    if(metaPrice > 0 && isFinite(metaPrice)) return metaPrice;
+    const closes = result?.indicators?.quote?.[0]?.close || [];
+    const latestClose = [...closes].reverse().find(v => v != null && Number(v) > 0);
+    return Number(latestClose) || 0;
+  }
+
+  function getStockByTicker(ticker){
+    return state.stocks.find(s=>String(s.ticker).toUpperCase()===String(ticker).toUpperCase());
+  }
+
+  function getPriceForTicker(ticker){
+    const stock = getStockByTicker(ticker);
+    return parseFloat(stock?.currentPrice)||0;
+  }
+
+  async function fetchTickerPrice(ticker){
+    const symbol = String(ticker||'').trim().toUpperCase();
+    if(!symbol) throw new Error('סימול מניה חסר');
+
+    const yahooUrl =
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+
+    const attempts = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
+      `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
+      yahooUrl
+    ];
+
+    const errors = [];
+    for(const url of attempts){
+      try{
+        const data = await fetchJsonWithTimeout(url);
+        const price = extractYahooPrice(data);
+        if(price>0 && isFinite(price)) return price;
+        throw new Error('לא התקבל מחיר תקין');
+      }catch(e){
+        errors.push(e?.message || 'שגיאה');
+      }
+    }
+    throw new Error(errors.join(' | '));
+  }
+
+  async function refreshStock(stockId){
+    const stock = state.stocks.find(s=>s.id===stockId);
+    if(!stock) return;
+    const symbol = String(stock.ticker||'').trim().toUpperCase();
+    if(!symbol) return;
+
+    $('priceStatus').textContent = `מושך מחיר עבור ${symbol}…`;
+    try{
+      const price = await fetchTickerPrice(symbol);
+      stock.ticker = symbol;
+      stock.currentPrice = price;
+      stock.lastUpdated = new Date().toISOString();
+
+      renderStockList();
+      renderRSUList();
+      renderEsppStockSelect();
+      $('esppCurrentPrice').value = getPriceForTicker(state.espp.ticker) || '';
+      updateSummary();
+      $('priceStatus').textContent = `המחיר של ${symbol} עודכן ל־$${price.toFixed(2)} ✓`;
+      scheduleSave();
+    }catch(e){
+      console.error(e);
+      $('priceStatus').textContent = `לא ניתן למשוך מחיר עבור ${symbol}`;
+    }
+  }
+
+  async function refreshAllStocks(){
+    if(!state.stocks.length){
+      $('priceStatus').textContent = 'אין מניות לרענון';
+      return;
+    }
+    const btn = $('refreshAllStocks');
+    btn.disabled = true;
+    $('priceStatus').textContent = 'מרענן את כל מחירי המניות…';
+    let updated = 0;
+    for(const stock of state.stocks){
+      try{
+        const price = await fetchTickerPrice(stock.ticker);
+        stock.currentPrice = price;
+        stock.lastUpdated = new Date().toISOString();
+        updated++;
+      }catch(e){
+        console.error('refresh failed', stock.ticker, e);
+      }
+    }
+    renderStockList();
+    renderRSUList();
+    renderEsppStockSelect();
+    updateSummary();
+    scheduleSave();
+    btn.disabled = false;
+    $('priceStatus').textContent = updated===state.stocks.length
+      ? `כל ${updated} המניות עודכנו ✓`
+      : `${updated} מתוך ${state.stocks.length} מניות עודכנו`;
+  }
+
+  function addStockFromInput(){
+    const ticker = ($('stockTicker').value||'').trim().toUpperCase();
+    if(!ticker){
+      $('priceStatus').textContent = 'יש להזין סימול מניה';
+      return;
+    }
+    if(getStockByTicker(ticker)){
+      $('priceStatus').textContent = 'המניה כבר קיימת ברשימה';
+      return;
+    }
+    state.stocks.push({id:uid(), ticker, currentPrice:'', lastUpdated:null});
+    $('stockTicker').value = '';
+    renderStockList();
+    renderRSUList();
+    renderEsppStockSelect();
+    scheduleSave();
+    refreshStock(state.stocks[state.stocks.length-1].id);
+  }
+
+  function renderStockList(){
+    const list = $('stockList');
+    list.innerHTML = '';
+    if(!state.stocks.length){
+      list.innerHTML = '<div class="stock-empty">עדיין לא נוספו מניות. הוסיפי סימול בשדה למעלה.</div>';
+      return;
+    }
+    state.stocks.forEach(stock=>{
+      const row = document.createElement('div');
+      row.className = 'stock-row';
+      row.innerHTML = `
+        <input type="text" class="stock-symbol" data-id="${stock.id}" value="${stock.ticker ?? ''}" autocomplete="off" autocapitalize="characters">
+        <div class="stock-row-price">${Number(stock.currentPrice)>0 ? '$'+Number(stock.currentPrice).toFixed(2) : '$—'}</div>
+        <button type="button" class="fx-btn refresh-stock" data-id="${stock.id}">רענון</button>
+        <div class="rm-stock" data-id="${stock.id}">✕</div>
+        <div class="stock-updated">${stock.lastUpdated ? 'עודכן: '+new Date(stock.lastUpdated).toLocaleString('he-IL') : 'טרם נמשך מחיר'}</div>
+      `;
+      list.appendChild(row);
+    });
+
+    list.querySelectorAll('.stock-symbol').forEach(inp=>{
+      inp.addEventListener('change', ()=>{
+        const stock = state.stocks.find(s=>s.id===inp.dataset.id);
+        if(!stock) return;
+        const previousTicker = stock.ticker;
+        const nextTicker = inp.value.trim().toUpperCase();
+        if(!nextTicker){ inp.value = previousTicker; return; }
+        const duplicate = state.stocks.some(s=>s.id!==stock.id && s.ticker===nextTicker);
+        if(duplicate){
+          alert('המניה כבר קיימת ברשימה.');
+          inp.value = previousTicker;
+          return;
+        }
+        stock.ticker = nextTicker;
+        if(state.espp.ticker===previousTicker) state.espp.ticker=nextTicker;
+        state.rsuGrants.forEach(g=>{ if(g.ticker===previousTicker) g.ticker=nextTicker; });
+        renderRSUList();
+        renderEsppStockSelect();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+
+    list.querySelectorAll('.refresh-stock').forEach(btn=>{
+      btn.addEventListener('click', ()=>refreshStock(btn.dataset.id));
+    });
+
+    list.querySelectorAll('.rm-stock').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const stock = state.stocks.find(s=>s.id===btn.dataset.id);
+        if(!stock) return;
+        const rsuUses = state.rsuGrants.filter(g=>g.ticker===stock.ticker).length;
+        const esppUses = state.espp.ticker===stock.ticker ? 1 : 0;
+        if(rsuUses || esppUses){
+          const uses = [rsuUses ? `${rsuUses} מענקי RSU` : '', esppUses ? 'ESPP' : ''].filter(Boolean).join(' וב־');
+          if(!confirm(`המניה ${stock.ticker} נמצאת בשימוש ב־${uses}. למחוק אותה ולבטל את הבחירה במקומות האלה?`)) return;
+        }else if(!confirm(`למחוק את המניה ${stock.ticker}?`)){
+          return;
+        }
+        state.stocks = state.stocks.filter(s=>s.id!==btn.dataset.id);
+        if(state.espp.ticker===stock.ticker) state.espp.ticker='';
+        state.rsuGrants.forEach(g=>{ if(g.ticker===stock.ticker) g.ticker=''; });
+        renderStockList();
+        renderRSUList();
+        renderEsppStockSelect();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+  }
+
+  // ---------- CALC ----------
+  function calcIncomeTotal(){
+    return state.incomes.reduce((sum,x)=>{
+      const monthlyIncome = parseFloat(x.amount)||0;
+      const bonusPct = x.bonusEnabled ? (parseFloat(x.bonusPct)||0) : 0;
+      const monthlyBonusAverage = monthlyIncome * (bonusPct/100);
+      return sum + monthlyIncome + monthlyBonusAverage;
+    },0);
+  }
+
+  function calcRSUMonthly(){
+    const usdIls = parseFloat(state.fx.usdIls)||0;
+    return state.rsuGrants.reduce((sum,g)=>{
+      const originalValueUsd = parseFloat(g.valueUsd)||0;
+      const years = parseFloat(g.years)||4;
+      const tax = parseFloat(g.tax)||0;
+      const months = years*12;
+      if(months<=0) return sum;
+
+      let valueUsd = originalValueUsd;
+
+      if(g.useCurrentValue){
+        const grantSharePrice = parseFloat(g.originalSharePrice)||0;
+        const selectedStockPrice = getPriceForTicker(g.ticker);
+        const currentSharePrice = selectedStockPrice || parseFloat(g.currentSharePrice)||0;
+
+        if(grantSharePrice>0 && currentSharePrice>0 && originalValueUsd>0){
+          const promisedShares = Math.ceil(originalValueUsd / grantSharePrice);
+          valueUsd = promisedShares * currentSharePrice;
+        }else{
+          return sum;
+        }
+      }
+
+      const valIls = valueUsd*usdIls;
+      const net = valIls*(1-tax/100);
+      return sum + net/months;
+    },0);
+  }
+
+  function calcESPPMonthly(){
+    const e = state.espp;
+    const usdIls = parseFloat(state.fx.usdIls)||0;
+    const gross = parseFloat(e.gross)||0;
+    const contribPct = parseFloat(e.contrib)||0;
+    const period = parseFloat(e.period)||0;
+    const taxPct = parseFloat(e.tax)||0;
+    const purchasePrice = parseFloat(e.purchasePrice)||0;
+    const marketAtPurchase = parseFloat(e.marketAtPurchase)||0;
+    const currentPrice = getPriceForTicker(e.ticker) || parseFloat(e.currentPrice)||0;
+    if(period<=0) return 0;
+
+    const monthlyContribIls = gross*(contribPct/100);
+    const totalContribIls = monthlyContribIls*period;
+    let gainIls = 0;
+    if(e.priceMode==='fixed15'){
+      gainIls = totalContribIls*0.15;
+    }else{
+      if(purchasePrice<=0) return 0;
+      const totalContribUsd = usdIls>0 ? totalContribIls/usdIls : 0;
+      const shares = totalContribUsd/purchasePrice;
+      const refPrice = e.priceMode==='current' ? currentPrice : marketAtPurchase;
+      if(refPrice<=0) return 0;
+      const valueUsd = shares*refPrice;
+      const valueIls = valueUsd*usdIls;
+      gainIls = valueIls - totalContribIls;
+    }
+    const netGainIls = gainIls*(1-taxPct/100);
+
+    if(e.netOfEspp){
+      return (netGainIls + totalContribIls)/period;
+    }else{
+      return netGainIls/period;
+    }
+  }
+
+  function calcExpensesTotal(){
+    return state.expenses.reduce((s,x)=> s + (parseFloat(x.amount)||0), 0);
+  }
+
+  function calcAll(){
+    const income = calcIncomeTotal();
+    const rsu = calcRSUMonthly();
+    const espp = calcESPPMonthly();
+    const expenses = calcExpensesTotal();
+    const totalIncome = income+rsu+espp;
+    const disposable = totalIncome - expenses;
+    return {income, rsu, espp, expenses, totalIncome, disposable};
+  }
+
+  // ---------- RENDER ----------
+  function renderEsppStockSelect(){
+    const sel = $('esppStockSelect');
+    if(!sel) return;
+    sel.innerHTML = '<option value="">בחירת מניה</option>' +
+      state.stocks.map(s=>`<option value="${s.ticker}" ${state.espp.ticker===s.ticker?'selected':''}>${s.ticker}</option>`).join('');
+  }
+
+  function render(){
+    $('fxRate').value = state.fx.usdIls ?? '';
+    $('esppGross').value = state.espp.gross ?? '';
+    $('esppContrib').value = state.espp.contrib ?? '';
+    $('esppPeriod').value = state.espp.period ?? '';
+    $('esppTax').value = state.espp.tax ?? '';
+    $('stockTicker').value = '';
+    renderStockList();
+    renderEsppStockSelect();
+    $('esppPurchasePrice').value = state.espp.purchasePrice ?? '';
+    $('esppMarketAtPurchase').value = state.espp.marketAtPurchase ?? '';
+    $('esppCurrentPrice').value = getPriceForTicker(state.espp.ticker) || '';
+    updatePriceModeUI();
+    updateEsppToggleUI();
+
+    renderIncomeList();
+    renderRSUList();
+    renderCategorySelect();
+    renderExpenses();
+    updateSummary();
+  }
+
+  function renderIncomeList(){
+    const list = $('incomeList');
+    list.innerHTML = '';
+
+    state.incomes.forEach(x=>{
+      if(typeof x.bonusEnabled !== 'boolean') x.bonusEnabled = false;
+      if(x.bonusPct == null) x.bonusPct = '';
+
+      const monthlyIncome = parseFloat(x.amount)||0;
+      const bonusPct = parseFloat(x.bonusPct)||0;
+      const annualIncome = monthlyIncome*12;
+      const annualBonus = x.bonusEnabled ? annualIncome*(bonusPct/100) : 0;
+      const monthlyBonusAverage = annualBonus/12;
+
+      const row = document.createElement('div');
+      row.className = 'income-row';
+      row.innerHTML = `
+        <div class="income-main">
+          <input type="text" class="i-name" data-id="${x.id}" value="${x.name ?? ''}" placeholder="שם מקור ההכנסה">
+          <div class="amt-wrap">
+            <input type="number" class="i-amt" data-id="${x.id}" value="${x.amount ?? ''}" placeholder="0" inputmode="decimal">
+            <span class="cur-mark">₪</span>
+          </div>
+          <div class="rm" data-id="${x.id}">✕</div>
+        </div>
+
+        <div class="bonus-toggle">
+          <span class="bonus-toggle-label">בונוס שנתי להכנסה זו</span>
+          <button type="button" class="bonus-btn ${x.bonusEnabled?'active':''}" data-id="${x.id}">
+            ${x.bonusEnabled?'פעיל':'הוספת בונוס'}
+          </button>
+        </div>
+
+        <div class="bonus-panel ${x.bonusEnabled?'active':''}">
+          <div class="bonus-field">
+            <label>אחוז בונוס מההכנסה השנתית</label>
+            <div class="input-row has-suffix">
+              <input type="number" class="i-bonus-pct" data-id="${x.id}" value="${x.bonusPct ?? ''}" placeholder="0" inputmode="decimal">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+          <div class="bonus-field">
+            <label>בונוס שנתי מחושב</label>
+            <input type="text" value="₪${fmt(annualBonus)}" readonly>
+          </div>
+          <div class="bonus-summary">
+            הכנסה שנתית: ₪${fmt(annualIncome)} · תוספת חודשית ממוצעת מהבונוס: ₪${fmt(monthlyBonusAverage)}
+          </div>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+
+    list.querySelectorAll('.i-name,.i-amt,.i-bonus-pct').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const x = state.incomes.find(e=>e.id===inp.dataset.id);
+        if(!x) return;
+        if(inp.classList.contains('i-name')) x.name = inp.value;
+        if(inp.classList.contains('i-amt')) x.amount = inp.value;
+        if(inp.classList.contains('i-bonus-pct')) x.bonusPct = inp.value;
+        updateSummary();
+        scheduleSave();
+
+        const row = inp.closest('.income-row');
+        if(row){
+          const annualIncome = (parseFloat(x.amount)||0)*12;
+          const annualBonus = x.bonusEnabled ? annualIncome*((parseFloat(x.bonusPct)||0)/100) : 0;
+          const monthlyBonusAverage = annualBonus/12;
+          const summary = row.querySelector('.bonus-summary');
+          const readonly = row.querySelector('.bonus-field input[readonly]');
+          if(summary) summary.textContent = `הכנסה שנתית: ₪${fmt(annualIncome)} · תוספת חודשית ממוצעת מהבונוס: ₪${fmt(monthlyBonusAverage)}`;
+          if(readonly) readonly.value = `₪${fmt(annualBonus)}`;
+        }
+      });
+    });
+
+    list.querySelectorAll('.bonus-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const x = state.incomes.find(e=>e.id===btn.dataset.id);
+        if(!x) return;
+        x.bonusEnabled = !x.bonusEnabled;
+        renderIncomeList();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+
+    list.querySelectorAll('.rm').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.incomes = state.incomes.filter(x=>x.id!==btn.dataset.id);
+        renderIncomeList();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+  }
+
+  function updateRSUGrantHint(grantId){
+    const g = state.rsuGrants.find(x=>x.id===grantId);
+    const hint = document.querySelector(`[data-rsu-shares="${grantId}"]`);
+    if(!g || !hint) return;
+
+    if(!g.useCurrentValue){
+      hint.textContent = '';
+      return;
+    }
+
+    const grantValue = parseFloat(g.valueUsd)||0;
+    const grantPrice = parseFloat(g.originalSharePrice)||0;
+    const currentPrice = getPriceForTicker(g.ticker) || parseFloat(g.currentSharePrice)||0;
+
+    if(grantValue<=0 || grantPrice<=0){
+      hint.textContent = 'יש להזין את שווי ההענקה ואת מחיר המניה בזמן ה־grant.';
+      return;
+    }
+
+    const shares = Math.ceil(grantValue / grantPrice);
+    if(currentPrice>0){
+      const currentValue = shares * currentPrice;
+      hint.textContent =
+        `כמות מניות שהובטחה: ${shares.toLocaleString('en-US')} · שווי נוכחי: $${currentValue.toLocaleString('en-US', {maximumFractionDigits:2})}`;
+    }else{
+      hint.textContent =
+        `כמות מניות שהובטחה: ${shares.toLocaleString('en-US')} · יש להזין מחיר מניה נוכחי`;
+    }
+  }
+
+  function renderRSUList(){
+    const list = $('rsuList');
+    list.innerHTML = '';
+    state.rsuGrants.forEach(g=>{
+      const div = document.createElement('div');
+      div.className = 'grant';
+      div.innerHTML = `
+        <div class="remove-btn" data-id="${g.id}">✕</div>
+        <div class="field" style="margin-top:0;">
+          <label>מניה עבור הענקה זו</label>
+          <select class="g-ticker stock-select" data-id="${g.id}">
+            <option value="">בחירת מניה</option>
+            ${state.stocks.map(s=>`<option value="${s.ticker}" ${g.ticker===s.ticker?'selected':''}>${s.ticker}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin-top:0;">
+          <label>שווי ההענקה (ברוטו, בזמן ההענקה)</label>
+          <div class="input-row has-suffix"><input type="number" class="g-value" data-id="${g.id}" value="${g.valueUsd ?? ''}" placeholder="0"><span class="suffix">$</span></div>
+        </div>
+        <div class="grant-grid">
+          <div class="field">
+            <label>תקופת הבשלה</label>
+            <div class="input-row has-suffix"><input type="number" class="g-years" data-id="${g.id}" value="${g.years ?? 4}" placeholder="4"><span class="suffix">שנים</span></div>
+          </div>
+          <div class="field">
+            <label>מס בעת הבשלה</label>
+            <div class="input-row has-suffix"><input type="number" class="g-tax" data-id="${g.id}" value="${g.tax ?? 25}" placeholder="25"><span class="suffix">%</span></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>אופן חישוב השווי</label>
+          <div class="toggle-group">
+            <div class="toggle-opt g-mode-original ${!g.useCurrentValue?'active':''}" data-id="${g.id}">שווי מקורי</div>
+            <div class="toggle-opt g-mode-current ${g.useCurrentValue?'active':''}" data-id="${g.id}">שווי לפי מחיר מניה נוכחי</div>
+          </div>
+        </div>
+        <div class="grant-grid mode-panel ${g.useCurrentValue?'active':''}" data-rsu-prices="${g.id}">
+          <div class="field">
+            <label>מחיר מניה בזמן ה־grant ($)</label>
+            <div class="input-row has-suffix"><input type="number" class="g-original-price" data-id="${g.id}" value="${g.originalSharePrice ?? ''}" placeholder="0"><span class="suffix">$</span></div>
+          </div>
+          <div class="field">
+            <label>מחיר מניה נוכחי ($)</label>
+            <div class="input-row has-suffix"><input type="number" value="${getPriceForTicker(g.ticker) || ''}" placeholder="נמשך מהמאגר" readonly><span class="suffix">$</span></div>
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <div class="hint" data-rsu-shares="${g.id}" style="margin-top:0;"></div>
+          </div>
+        </div>
+      `;
+      list.appendChild(div);
+
+      const grantValue = parseFloat(g.valueUsd)||0;
+      const grantPrice = parseFloat(g.originalSharePrice)||0;
+      const currentPrice = getPriceForTicker(g.ticker) || parseFloat(g.currentSharePrice)||0;
+      const sharesHint = div.querySelector(`[data-rsu-shares="${g.id}"]`);
+
+      if(sharesHint){
+        if(g.useCurrentValue && grantValue>0 && grantPrice>0){
+          const shares = Math.ceil(grantValue / grantPrice);
+          const currentValue = currentPrice>0 ? shares * currentPrice : 0;
+          sharesHint.textContent = currentPrice>0
+            ? `כמות מניות שהובטחה: ${shares.toLocaleString('en-US')} · שווי נוכחי: $${currentValue.toLocaleString('en-US', {maximumFractionDigits:2})}`
+            : `כמות מניות שהובטחה: ${shares.toLocaleString('en-US')} · יש להזין מחיר מניה נוכחי`;
+        }else if(g.useCurrentValue){
+          sharesHint.textContent = 'יש להזין את שווי ההענקה ואת מחיר המניה בזמן ה־grant.';
+        }
+      }
+    });
+    list.querySelectorAll('.remove-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.rsuGrants = state.rsuGrants.filter(g=>g.id!==btn.dataset.id);
+        renderRSUList(); updateSummary(); scheduleSave();
+      });
+    });
+    list.querySelectorAll('.g-mode-original').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const g = state.rsuGrants.find(x=>x.id===btn.dataset.id);
+        if(!g) return;
+        g.useCurrentValue = false;
+        renderRSUList();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+
+    list.querySelectorAll('.g-mode-current').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const g = state.rsuGrants.find(x=>x.id===btn.dataset.id);
+        if(!g) return;
+        g.useCurrentValue = true;
+
+        const livePrice = getPriceForTicker(g.ticker);
+        if(livePrice>0 && !(parseFloat(g.currentSharePrice)>0)){
+          g.currentSharePrice = livePrice;
+        }
+
+        renderRSUList();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+
+    list.querySelectorAll('.g-ticker').forEach(sel=>{
+      sel.addEventListener('change', ()=>{
+        const g = state.rsuGrants.find(x=>x.id===sel.dataset.id);
+        if(!g) return;
+        g.ticker = sel.value;
+        const livePrice = getPriceForTicker(g.ticker);
+        if(livePrice>0) g.currentSharePrice = livePrice;
+        renderRSUList();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+
+    list.querySelectorAll('.g-value,.g-years,.g-tax,.g-original-price').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const g = state.rsuGrants.find(x=>x.id===inp.dataset.id);
+        if(!g) return;
+        if(inp.classList.contains('g-value')) g.valueUsd = inp.value;
+        if(inp.classList.contains('g-years')) g.years = inp.value;
+        if(inp.classList.contains('g-tax')) g.tax = inp.value;
+        if(inp.classList.contains('g-original-price')) g.originalSharePrice = inp.value;
+        updateRSUGrantHint(g.id);
+        updateSummary(); scheduleSave();
+      });
+    });
+  }
+
+  function renderCategorySelect(){
+    const sel = $('newExpenseCat');
+    sel.innerHTML = state.expenseCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    const selected = state.expenseCategories.some(c=>c.id===state.selectedExpenseCategoryId)
+      ? state.selectedExpenseCategoryId
+      : state.expenseCategories[0]?.id;
+    state.selectedExpenseCategoryId = selected;
+    if(selected) sel.value = selected;
+  }
+
+  function renderExpenses(){
+    const container = $('expByCategory');
+    container.innerHTML = '';
+    state.expenseCategories.forEach(cat=>{
+      const items = state.expenses.filter(x=>x.categoryId===cat.id);
+      const group = document.createElement('div');
+      group.className = 'cat-group';
+      const total = items.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+      group.innerHTML = `<div class="cat-head">
+        <div class="cat-name">${cat.name}</div>
+        <div class="cat-actions">
+          <div class="cat-total num">₪${fmt(total)}</div>
+          <button type="button" class="delete-cat-btn" data-cat-id="${cat.id}">מחיקה</button>
+        </div>
+      </div>`;
+      const rowsWrap = document.createElement('div');
+      items.forEach(x=>{
+        const row = document.createElement('div');
+        row.className = 'expense-row';
+        row.innerHTML = `
+          <input type="text" class="x-name" data-id="${x.id}" value="${x.name ?? ''}" placeholder="שם ההוצאה">
+          <div class="amt-wrap">
+            <input type="number" class="x-amt" data-id="${x.id}" value="${x.amount ?? ''}" placeholder="0" inputmode="decimal">
+            <span class="cur-mark">₪</span>
+          </div>
+          <div class="rm" data-id="${x.id}">✕</div>
+        `;
+        rowsWrap.appendChild(row);
+      });
+      group.appendChild(rowsWrap);
+      container.appendChild(group);
+    });
+
+    container.querySelectorAll('.delete-cat-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const catId = btn.dataset.catId;
+        const cat = state.expenseCategories.find(c=>c.id===catId);
+        if(!cat) return;
+        if(state.expenseCategories.length<=1){
+          alert('חייבת להישאר לפחות קטגוריה אחת.');
+          return;
+        }
+        const itemsCount = state.expenses.filter(x=>x.categoryId===catId).length;
+        const message = itemsCount>0
+          ? `למחוק את הקטגוריה "${cat.name}" ואת ${itemsCount} ההוצאות שבה?`
+          : `למחוק את הקטגוריה "${cat.name}"?`;
+        if(!confirm(message)) return;
+
+        state.expenseCategories = state.expenseCategories.filter(c=>c.id!==catId);
+        state.expenses = state.expenses.filter(x=>x.categoryId!==catId);
+        if(state.selectedExpenseCategoryId===catId){
+          state.selectedExpenseCategoryId = state.expenseCategories[0]?.id || '';
+        }
+        renderCategorySelect();
+        renderExpenses();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+
+    container.querySelectorAll('.x-name,.x-amt').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const x = state.expenses.find(e=>e.id===inp.dataset.id);
+        if(!x) return;
+        if(inp.classList.contains('x-name')) x.name = inp.value;
+        if(inp.classList.contains('x-amt')) x.amount = inp.value;
+        updateSummary(); scheduleSave();
+      });
+    });
+    container.querySelectorAll('.rm').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.expenses = state.expenses.filter(x=>x.id!==btn.dataset.id);
+        renderExpenses(); updateSummary(); scheduleSave();
+      });
+    });
+  }
+
+  function updatePriceModeUI(){
+    $('priceModeCurrent').classList.toggle('active', state.espp.priceMode==='current');
+    $('priceModePurchase').classList.toggle('active', state.espp.priceMode==='purchase');
+    $('priceModeFixed').classList.toggle('active', state.espp.priceMode==='fixed15');
+    $('esppModeHint').textContent = state.espp.priceMode==='fixed15'
+      ? 'הרווח יחושב כ־15% מסכום ההשקעה, בלי תלות במחירי המניה.'
+      : state.espp.priceMode==='current'
+        ? 'הרווח יחושב לפי מחיר הרכישה ומחיר המניה הנוכחי.'
+        : 'הרווח יחושב לפי מחיר הרכישה ומחיר השוק בזמן הרכישה.';
+  }
+
+  function updateEsppToggleUI(){
+    $('esppNetYes').classList.toggle('active', state.espp.netOfEspp);
+    $('esppNetNo').classList.toggle('active', !state.espp.netOfEspp);
+    $('esppToggleHint').textContent = state.espp.netOfEspp
+      ? 'במצב זה: ה־ESPP יוסיף בממוצע את ההפרשה + הרווח נטו, כי הכסף לא נספר בהכנסות שהזנת.'
+      : 'במצב זה: ה־ESPP יוסיף בממוצע רק את הרווח נטו, כי ההפרשה עצמה כבר כלולה בהכנסות שהזנת.';
+  }
+
+  function updateSummary(){
+    const c = calcAll();
+    $('amt-income').textContent = fmt(c.income);
+    $('amt-rsu').textContent = fmt(c.rsu);
+    $('amt-espp').textContent = fmt(c.espp);
+    $('amt-exp').textContent = fmt(c.expenses);
+
+    const heroFig = $('heroFigure');
+    heroFig.classList.toggle('pos', c.disposable>=0);
+    heroFig.classList.toggle('neg', c.disposable<0);
+    $('heroNum').textContent = fmt(Math.abs(c.disposable));
+    $('heroFigure').querySelector('.cur').textContent = c.disposable<0 ? '−₪' : '₪';
+    $('heroSub').textContent = c.disposable>=0
+      ? 'הכנסה פנויה ממוצעת לחודש'
+      : 'גירעון ממוצע לחודש — ההוצאות עולות על ההכנסות';
+
+    const bar = $('flowbar'); const legend = $('legend');
+    bar.innerHTML=''; legend.innerHTML='';
+    const total = Math.max(c.totalIncome, c.expenses, 1);
+    const parts = [
+      {label:'הכנסות קבועות', val:c.income, color:'var(--blue)'},
+      {label:'RSU', val:c.rsu, color:'var(--amber)'},
+      {label:'ESPP', val:c.espp, color:'var(--mint)'},
+    ];
+    parts.forEach(p=>{
+      if(p.val<=0) return;
+      const seg = document.createElement('div');
+      seg.style.width = (p.val/total*100)+'%';
+      seg.style.background = p.color;
+      bar.appendChild(seg);
+    });
+    if(c.expenses>0){
+      const seg = document.createElement('div');
+      seg.style.width = (c.expenses/total*100)+'%';
+      seg.style.background = 'var(--red)'; seg.style.opacity='0.55';
+      bar.appendChild(seg);
+    }
+    [...parts, {label:'הוצאות', val:c.expenses, color:'var(--red)'}].forEach(p=>{
+      if(p.val<=0) return;
+      const item = document.createElement('div');
+      item.className='item';
+      item.innerHTML = `<span class="dot" style="background:${p.color}"></span>${p.label} · ₪${fmt(p.val)}`;
+      legend.appendChild(item);
+    });
+  }
+
+  // ---------- EVENTS ----------
+  $('fxRate').addEventListener('input', e=>{ state.fx.usdIls = e.target.value; updateSummary(); scheduleSave(); });
+  $('fxRefresh').addEventListener('click', ()=> tryFetchFx(false));
+  $('addStock').addEventListener('click', addStockFromInput);
+  $('refreshAllStocks').addEventListener('click', refreshAllStocks);
+
+  $('esppGross').addEventListener('input', e=>{ state.espp.gross = e.target.value; updateSummary(); scheduleSave(); });
+  $('esppContrib').addEventListener('input', e=>{ state.espp.contrib = e.target.value; updateSummary(); scheduleSave(); });
+  $('esppPeriod').addEventListener('input', e=>{ state.espp.period = e.target.value; updateSummary(); scheduleSave(); });
+  $('esppTax').addEventListener('input', e=>{ state.espp.tax = e.target.value; updateSummary(); scheduleSave(); });
+  $('stockTicker').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addStockFromInput(); } });
+  $('esppStockSelect').addEventListener('change', e=>{
+    state.espp.ticker = e.target.value;
+    const livePrice = getPriceForTicker(state.espp.ticker);
+    if(livePrice>0){
+      $('esppCurrentPrice').value = livePrice.toFixed(2);
+    }
+    updateSummary();
+    scheduleSave();
+  });
+  $('esppPurchasePrice').addEventListener('input', e=>{ state.espp.purchasePrice = e.target.value; updateSummary(); scheduleSave(); });
+  $('esppMarketAtPurchase').addEventListener('input', e=>{ state.espp.marketAtPurchase = e.target.value; updateSummary(); scheduleSave(); });
+
+  $('priceModeCurrent').addEventListener('click', ()=>{ state.espp.priceMode='current'; updatePriceModeUI(); updateSummary(); scheduleSave(); });
+  $('priceModePurchase').addEventListener('click', ()=>{ state.espp.priceMode='purchase'; updatePriceModeUI(); updateSummary(); scheduleSave(); });
+  $('priceModeFixed').addEventListener('click', ()=>{ state.espp.priceMode='fixed15'; updatePriceModeUI(); updateSummary(); scheduleSave(); });
+
+  $('esppNetYes').addEventListener('click', ()=>{ state.espp.netOfEspp = true; updateEsppToggleUI(); updateSummary(); scheduleSave(); });
+  $('esppNetNo').addEventListener('click', ()=>{ state.espp.netOfEspp = false; updateEsppToggleUI(); updateSummary(); scheduleSave(); });
+
+  $('addIncome').addEventListener('click', ()=>{
+    state.incomes.push({id:uid(), name:'', amount:'', bonusEnabled:false, bonusPct:''});
+    renderIncomeList(); updateSummary(); scheduleSave();
+  });
+  $('addGrant').addEventListener('click', ()=>{
+    state.rsuGrants.push({id:uid(), ticker:'', valueUsd:'', years:4, tax:25, useCurrentValue:false, originalSharePrice:'', currentSharePrice:''});
+    renderRSUList(); updateSummary(); scheduleSave();
+  });
+  $('newExpenseCat').addEventListener('change', e=>{ state.selectedExpenseCategoryId = e.target.value; scheduleSave(); });
+  $('addExpense').addEventListener('click', ()=>{
+    const selected = state.selectedExpenseCategoryId || $('newExpenseCat').value;
+    const catId = state.expenseCategories.some(c=>c.id===selected) ? selected : state.expenseCategories[0].id;
+    state.expenses.push({id:uid(), name:'', amount:'', categoryId:catId});
+    renderExpenses(); updateSummary(); scheduleSave();
+  });
+  $('addCategory').addEventListener('click', ()=>{
+    const name = prompt('שם הקטגוריה החדשה:');
+    if(name && name.trim()){
+      const cat = {id:uid(), name:name.trim()};
+      state.expenseCategories.push(cat);
+      renderCategorySelect(); renderExpenses(); scheduleSave();
+      state.selectedExpenseCategoryId = cat.id;
+      $('newExpenseCat').value = cat.id;
+    }
+  });
+
+  $('resetAll').addEventListener('click', ()=>{
+    if(confirm('לאפס את כל הנתונים שהוזנו?')){
+      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      render(); scheduleSave();
+    }
+  });
+
+  document.querySelectorAll('.section-head').forEach(head=>{
+    head.addEventListener('click', ()=>{
+      const targetId = head.dataset.target;
+      const body = $(targetId);
+      const chevId = 'chev-' + targetId.replace('body-','');
+      const chev = $(chevId);
+      body.classList.toggle('collapsed');
+      chev.classList.toggle('open');
+    });
+  });
+
+  loadState();
+})();
+</script>
+</body>
+</html>

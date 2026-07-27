@@ -423,49 +423,107 @@
     $('fxStatus').textContent = silent ? 'לא ניתן היה למשוך שער — ניתן להזין ידנית' : 'המשיכה נכשלה, נסה שוב או הזן ידנית';
   }
 
-  // ---------- LIVE PRICE (best effort) ----------
+  // ---------- LIVE PRICE ----------
+  async function fetchJsonWithTimeout(url, timeoutMs = 12000){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try{
+      const res = await fetch(url, {
+        cache:'no-store',
+        signal:controller.signal,
+        headers:{'Accept':'application/json'}
+      });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }finally{
+      clearTimeout(timer);
+    }
+  }
+
+  function extractYahooPrice(data){
+    const result = data?.chart?.result?.[0];
+    if(!result) return 0;
+
+    const metaPrice = Number(result?.meta?.regularMarketPrice);
+    if(metaPrice > 0 && isFinite(metaPrice)) return metaPrice;
+
+    const closes = result?.indicators?.quote?.[0]?.close || [];
+    const latestClose = [...closes].reverse().find(v => v != null && Number(v) > 0);
+    return Number(latestClose) || 0;
+  }
+
   async function tryFetchPrice(){
-    const ticker = (state.stock?.ticker||'').trim().toUpperCase();
-    if(!ticker){ $('priceStatus').textContent = 'יש להזין סימול מניה קודם'; return; }
+    const ticker = (state.stock?.ticker || '').trim().toUpperCase();
+    if(!ticker){
+      $('priceStatus').textContent = 'יש להזין סימול מניה קודם';
+      return;
+    }
+
     $('priceStatus').textContent = 'מושך מחיר נוכחי…';
     $('stockPriceDisplay').textContent = '$…';
 
-    const urls = [
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`,
-      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`,
-      `https://api.nasdaq.com/api/quote/${encodeURIComponent(ticker)}/info?assetclass=stocks`
+    const yahooUrl =
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`;
+
+    const attempts = [
+      {
+        name:'AllOrigins',
+        url:`https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
+        parse:data => extractYahooPrice(data)
+      },
+      {
+        name:'CorsProxy.io',
+        url:`https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
+        parse:data => extractYahooPrice(data)
+      },
+      {
+        name:'Yahoo direct',
+        url:yahooUrl,
+        parse:data => extractYahooPrice(data)
+      }
     ];
 
-    for(const url of urls){
+    const errors = [];
+
+    for(const attempt of attempts){
       try{
-        const res = await fetch(url, {cache:'no-store', headers:{'Accept':'application/json'}});
-        if(!res.ok) throw new Error('http');
-        const data = await res.json();
-        let price = 0;
-        if(data?.chart?.result?.[0]){
-          const result = data.chart.result[0];
-          const closes = result?.indicators?.quote?.[0]?.close || [];
-          price = Number(result?.meta?.regularMarketPrice || [...closes].reverse().find(v=>v!=null));
-        }else{
-          const raw = data?.data?.primaryData?.lastSalePrice;
-          price = Number(String(raw||'').replace(/[^0-9.\-]/g,''));
-        }
-        if(price>0 && isFinite(price)){
+        const data = await fetchJsonWithTimeout(attempt.url);
+        const price = Number(attempt.parse(data));
+
+        if(price > 0 && isFinite(price)){
           state.stock.ticker = ticker;
           state.stock.currentPrice = price;
           state.stock.lastUpdated = new Date().toISOString();
           state.espp.currentPrice = price;
+
+          state.rsuGrants.forEach(g=>{
+            if(g.useCurrentValue){
+              g.currentSharePrice = price;
+            }
+          });
+
           $('stockTicker').value = ticker;
           $('stockPriceDisplay').textContent = `$${price.toFixed(2)}`;
           $('esppCurrentPrice').value = price.toFixed(2);
-          $('priceStatus').textContent = `המחיר העדכני של ${ticker} נמשך בהצלחה ✓`;
-          updateSummary(); scheduleSave();
+          $('priceStatus').textContent =
+            `המחיר העדכני של ${ticker}: $${price.toFixed(2)} ✓`;
+
+          renderRSUList();
+          updateSummary();
+          scheduleSave();
           return;
         }
-      }catch(e){}
+
+        throw new Error('לא התקבל מחיר תקין');
+      }catch(e){
+        errors.push(`${attempt.name}: ${e?.message || 'שגיאה לא ידועה'}`);
+      }
     }
+
+    console.error('Stock price fetch failed:', errors);
     $('stockPriceDisplay').textContent = '$—';
-    $('priceStatus').textContent = 'לא ניתן למשוך מחיר בדפדפן זה. אפשר להזין את המחיר ידנית בשדה ESPP או RSU.';
+    $('priceStatus').textContent =
+      'משיכת המחיר נכשלה בכל מקורות הנתונים. אפשר לנסות שוב בעוד רגע או להזין מחיר ידנית.';
   }
 
   // ---------- CALC ----------

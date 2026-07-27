@@ -665,6 +665,36 @@
     });
   }
 
+  function updateRSUGrantHint(grantId){
+    const g = state.rsuGrants.find(x=>x.id===grantId);
+    const hint = document.querySelector(`[data-rsu-shares="${grantId}"]`);
+    if(!g || !hint) return;
+
+    if(!g.useCurrentValue){
+      hint.textContent = '';
+      return;
+    }
+
+    const grantValue = parseFloat(g.valueUsd)||0;
+    const grantPrice = parseFloat(g.originalSharePrice)||0;
+    const currentPrice = parseFloat(g.currentSharePrice)||0;
+
+    if(grantValue<=0 || grantPrice<=0){
+      hint.textContent = 'יש להזין את שווי ההענקה ואת מחיר המניה בזמן ה־grant.';
+      return;
+    }
+
+    const shares = Math.ceil(grantValue / grantPrice);
+    if(currentPrice>0){
+      const currentValue = shares * currentPrice;
+      hint.textContent =
+        `כמות מניות שהובטחה: ${shares.toLocaleString('en-US')} · שווי נוכחי: $${currentValue.toLocaleString('en-US', {maximumFractionDigits:2})}`;
+    }else{
+      hint.textContent =
+        `כמות מניות שהובטחה: ${shares.toLocaleString('en-US')} · יש להזין מחיר מניה נוכחי`;
+    }
+  }
+
   function renderRSUList(){
     const list = $('rsuList');
     list.innerHTML = '';
@@ -733,6 +763,34 @@
         renderRSUList(); updateSummary(); scheduleSave();
       });
     });
+    list.querySelectorAll('.g-mode-original').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const g = state.rsuGrants.find(x=>x.id===btn.dataset.id);
+        if(!g) return;
+        g.useCurrentValue = false;
+        renderRSUList();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+
+    list.querySelectorAll('.g-mode-current').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const g = state.rsuGrants.find(x=>x.id===btn.dataset.id);
+        if(!g) return;
+        g.useCurrentValue = true;
+
+        const livePrice = parseFloat(state.stock?.currentPrice)||0;
+        if(livePrice>0 && !(parseFloat(g.currentSharePrice)>0)){
+          g.currentSharePrice = livePrice;
+        }
+
+        renderRSUList();
+        updateSummary();
+        scheduleSave();
+      });
+    });
+
     list.querySelectorAll('.g-value,.g-years,.g-tax,.g-original-price,.g-current-price').forEach(inp=>{
       inp.addEventListener('input', ()=>{
         const g = state.rsuGrants.find(x=>x.id===inp.dataset.id);
@@ -742,6 +800,7 @@
         if(inp.classList.contains('g-tax')) g.tax = inp.value;
         if(inp.classList.contains('g-original-price')) g.originalSharePrice = inp.value;
         if(inp.classList.contains('g-current-price')) g.currentSharePrice = inp.value;
+        updateRSUGrantHint(g.id);
         updateSummary(); scheduleSave();
       });
     });

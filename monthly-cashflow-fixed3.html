@@ -31,28 +31,15 @@
     --blue: #6FA8F5;
     --violet: #B18CF0;
   }
-
-  html[data-theme="light"]{
-    --bg:#F4F6F8;
-    --panel:#FFFFFF;
-    --panel-2:#F0F3F6;
-    --line:#D9E0E7;
-    --text:#17202A;
-    --muted:#5E6976;
-    --muted-2:#7E8996;
-    --mint:#139B73;
-    --amber:#C97820;
-    --red:#C94B55;
-    --blue:#3478C9;
-    --violet:#7953BE;
+  :root[data-theme="light"]{
+    --bg: #F4F5F7;
+    --panel: #FFFFFF;
+    --panel-2: #EEF0F3;
+    --line: #DEE2E8;
+    --text: #12161C;
+    --muted: #5B6472;
+    --muted-2: #8A92A0;
   }
-  html[data-theme="light"] .hero{ background:linear-gradient(160deg,#FFFFFF 0%,#F4F7F9 100%); }
-  html[data-theme="light"] .hero::before{ background:radial-gradient(circle,rgba(19,155,115,.12),transparent 70%); }
-  html[data-theme="light"] .save-pill{ color:#FFFFFF; box-shadow:0 4px 20px rgba(30,45,60,.18); }
-  .top-actions{display:flex;justify-content:flex-start;margin-bottom:10px;}
-  .theme-btn{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 11px;font-family:'Heebo',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
-  .theme-btn:active{background:var(--panel-2);}
-
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
   html,body{
     margin:0; padding:0; background:var(--bg); color:var(--text);
@@ -82,7 +69,7 @@
     pointer-events:none;
   }
   .hero-eyebrow{ font-size: 11px; letter-spacing:.14em; color:var(--muted-2); font-weight:700; text-transform:uppercase; margin-bottom:10px; }
-  .hero-figure{ font-size: 42px; font-weight:700; line-height:1.05; display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
+  .hero-figure{ font-size: 42px; font-weight:700; line-height:1.05; display:flex; flex-direction:row-reverse; align-items:baseline; gap:6px; flex-wrap:wrap; }
   .hero-figure .cur{ font-size:22px; color:var(--muted); font-weight:500; }
   .hero-figure.pos{ color: var(--mint); }
   .hero-figure.neg{ color: var(--red); }
@@ -211,16 +198,25 @@
 
   .save-pill{ position:fixed; bottom:16px; left:50%; transform:translateX(-50%) translateY(20px); background: var(--mint); color:#06110D; font-weight:700; font-size:12px; padding:8px 16px; border-radius:20px; opacity:0; transition: all .3s ease; pointer-events:none; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
   .save-pill.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .hero-top-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .hero-top-row .hero-eyebrow{ margin-bottom:0; }
+  .theme-toggle{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--muted);
+    border-radius:20px; padding:5px 11px; font-size:13px; line-height:1.4; cursor:pointer; flex-shrink:0;
+  }
+  .theme-toggle:active{ background:var(--line); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <div class="top-actions"><button type="button" class="theme-btn" id="themeToggle" aria-label="החלפת מצב תצוגה"><span id="themeIcon">☀</span><span id="themeLabel">מצב בהיר</span></button></div>
-
   <div class="hero">
-    <div class="hero-eyebrow">תמונת מצב חודשית ממוצעת</div>
-    <div class="hero-figure pos" id="heroFigure"><span class="num" id="heroNum">₪ 0</span></div>
+    <div class="hero-top-row">
+      <div class="hero-eyebrow">תמונת מצב חודשית ממוצעת</div>
+      <button type="button" class="theme-toggle" id="themeToggle">🌙 כהה</button>
+    </div>
+    <div class="hero-figure pos" id="heroFigure"><span class="cur">₪</span><span class="num" id="heroNum">0</span></div>
     <div class="hero-sub" id="heroSub">הכנסה פנויה ממוצעת לחודש</div>
     <div class="flowbar" id="flowbar"></div>
     <div class="legend" id="legend"></div>
@@ -230,7 +226,7 @@
     <div class="fx-left"><span class="icon">⇄</span><span>שער דולר–שקל <span style="color:var(--muted-2)">(ל-RSU ו-ESPP)</span></span></div>
     <div>
       <div class="fx-right">
-        <input type="number" id="fxRate" step="0.01" inputmode="decimal">
+        <input type="number" id="fxRate" step="0.001" inputmode="decimal">
         <button class="fx-btn" id="fxRefresh">רענון</button>
       </div>
       <div class="fx-status" id="fxStatus"></div>
@@ -422,7 +418,7 @@
     expenseCategories: DEFAULT_CATS,
     expenses: [],
     selectedExpenseCategoryId:'cat-housing',
-    preferences: { theme:'dark' }
+    theme:'dark'
   };
 
   let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -455,15 +451,29 @@
         state.rsuGrants.forEach(g=>{ if(g.ticker==null) g.ticker=''; });
         if(state.espp.ticker==null) state.espp.ticker='';
         if(!state.expenseCategories || !state.expenseCategories.length) state.expenseCategories = DEFAULT_CATS;
-        if(!state.preferences) state.preferences = {theme:'dark'};
-        if(!['dark','light'].includes(state.preferences.theme)) state.preferences.theme='dark';
+        if(state.theme!=='light' && state.theme!=='dark') state.theme = 'dark';
       }
     }catch(e){ /* first run */ }
-    applyTheme(state.preferences?.theme || 'dark');
+    applyTheme(state.theme);
     render();
-    runAutoRefresh(true);
-    startAutoRefresh();
+    tryFetchFx(true);
+    if(state.stocks.length) refreshAllStocks(true);
   }
+
+  // ---------- THEME ----------
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    const btn = $('themeToggle');
+    if(btn) btn.textContent = theme==='light' ? '☀️ בהיר' : '🌙 כהה';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content', theme==='light' ? '#F4F5F7' : '#0B0E12');
+  }
+
+  $('themeToggle').addEventListener('click', ()=>{
+    state.theme = state.theme==='light' ? 'dark' : 'light';
+    applyTheme(state.theme);
+    scheduleSave();
+  });
 
   function scheduleSave(){
     clearTimeout(saveTimer);
@@ -480,50 +490,6 @@
         setTimeout(()=>pill.classList.remove('show'), 1200);
       }catch(e){ console.error('save failed', e); }
     }, 500);
-  }
-
-
-  // ---------- THEME & AUTO REFRESH ----------
-  const AUTO_REFRESH_MS = 15 * 60 * 1000;
-  let autoRefreshTimer = null;
-  let autoRefreshRunning = false;
-
-  function applyTheme(theme){
-    const next = theme === 'light' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if(themeMeta) themeMeta.setAttribute('content', next==='light' ? '#F4F6F8' : '#0B0E12');
-    if($('themeIcon')) $('themeIcon').textContent = next==='light' ? '☾' : '☀';
-    if($('themeLabel')) $('themeLabel').textContent = next==='light' ? 'מצב כהה' : 'מצב בהיר';
-  }
-
-  function toggleTheme(){
-    const current = state.preferences?.theme || 'dark';
-    const next = current === 'light' ? 'dark' : 'light';
-    if(!state.preferences) state.preferences = {};
-    state.preferences.theme = next;
-    applyTheme(next);
-    scheduleSave();
-  }
-
-  async function runAutoRefresh(silent=false){
-    if(autoRefreshRunning) return;
-    autoRefreshRunning = true;
-    try{
-      await tryFetchFx(silent);
-      if(state.stocks.length) await refreshAllStocks(true);
-      const stamp = new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-      if($('priceStatus') && state.stocks.length) $('priceStatus').textContent += ` · רענון אוטומטי ${stamp}`;
-    }finally{
-      autoRefreshRunning = false;
-    }
-  }
-
-  function startAutoRefresh(){
-    clearInterval(autoRefreshTimer);
-    autoRefreshTimer = setInterval(()=>{
-      if(document.visibilityState==='visible') runAutoRefresh(true);
-    }, AUTO_REFRESH_MS);
   }
 
   // ---------- FX ----------
@@ -641,9 +607,9 @@
     }
   }
 
-  async function refreshAllStocks(silent=false){
+  async function refreshAllStocks(silent){
     if(!state.stocks.length){
-      $('priceStatus').textContent = 'אין מניות לרענון';
+      if(!silent) $('priceStatus').textContent = 'אין מניות לרענון';
       return;
     }
     const btn = $('refreshAllStocks');
@@ -1291,15 +1257,19 @@
   }
 
   // ---------- EVENTS ----------
-  $('themeToggle').addEventListener('click', toggleTheme);
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState==='visible') runAutoRefresh(true);
+  $('fxRate').addEventListener('input', e=>{
+    let v = e.target.value;
+    const dot = v.indexOf('.');
+    if(dot!==-1 && v.length - dot - 1 > 3){
+      v = v.slice(0, dot+4);
+      e.target.value = v;
+    }
+    state.fx.usdIls = v;
+    updateSummary(); scheduleSave();
   });
-
-  $('fxRate').addEventListener('input', e=>{ state.fx.usdIls = e.target.value; updateSummary(); scheduleSave(); });
   $('fxRefresh').addEventListener('click', ()=> tryFetchFx(false));
   $('addStock').addEventListener('click', addStockFromInput);
-  $('refreshAllStocks').addEventListener('click', ()=>refreshAllStocks(false));
+  $('refreshAllStocks').addEventListener('click', refreshAllStocks);
 
   $('esppGross').addEventListener('input', e=>{ state.espp.gross = e.target.value; updateSummary(); scheduleSave(); });
   $('esppContrib').addEventListener('input', e=>{ state.espp.contrib = e.target.value; updateSummary(); scheduleSave(); });
@@ -1354,7 +1324,6 @@
   $('resetAll').addEventListener('click', ()=>{
     if(confirm('לאפס את כל הנתונים שהוזנו?')){
       state = JSON.parse(JSON.stringify(DEFAULT_STATE));
-      applyTheme(state.preferences.theme);
       render(); scheduleSave();
     }
   });
@@ -1369,6 +1338,13 @@
       chev.classList.toggle('open');
     });
   });
+
+  // ---------- AUTO REFRESH ----------
+  const AUTO_REFRESH_MS = 15 * 60 * 1000; // every 15 minutes
+  setInterval(()=>{
+    tryFetchFx(true);
+    if(state.stocks.length) refreshAllStocks(true);
+  }, AUTO_REFRESH_MS);
 
   loadState();
 })();
